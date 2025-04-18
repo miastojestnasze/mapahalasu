@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dane z czujników</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+    <div id="chart"></div>
+
+    <script>
+
+        var data = d3.json("http://127.0.0.1:2345/dane_czujnikow");
+
+        Promise.all([data])
+        .then(function ([wszystko]) {
+
+                        
+            console.log(wszystko); 
+
+
+           // Filter the data for the first series (id = 17)
+        //    let filteredData = wszystko.filter(d => d.timestamp > 1729431110 && d.timestamp < 1729434710 && d.id === 17);
+        //     let filteredData2 = wszystko.filter(d => d.timestamp > 1729431110 && d.timestamp < 1729434710 && d.id === 16);
+
+            let filteredData = wszystko.filter(d => d.id === 'mjn-u-cz1');
+            let filteredData2 = wszystko.filter(d => d.id === 'mjn-test-1');
+            let filteredData3 = wszystko.filter(d => d.id === 'mjn-cz-noise-3');
+
+// Process the filtered data and create the chart with both series
+createChart(filteredData, filteredData2, filteredData3);
+});
+
+function createChart(data1, data2, data3) {
+// Set up the chart dimensions
+const margin = { top: 20, right: 30, bottom: 30, left: 50 };
+const width = 1200 - margin.left - margin.right;
+const height = 600 - margin.top - margin.bottom;
+
+// Parse timestamps into Date objects
+data1.forEach(d => {
+d.timestamp = new Date(d.timestamp * 1000);  // Convert UNIX timestamp to JavaScript Date
+});
+data2.forEach(d => {
+d.timestamp = new Date(d.timestamp * 1000);
+});
+data3.forEach(d => {
+d.timestamp = new Date(d.timestamp * 1000);
+});
+
+// Set up the SVG container
+const svg = d3.select("#chart")
+.append("svg")
+.attr("width", width + margin.left + margin.right)
+.attr("height", height + margin.top + margin.bottom)
+.append("g")
+.attr("transform", `translate(${margin.left},${margin.top})`);
+
+// Set up scales
+const x = d3.scaleTime()
+.domain([d3.min([...data1, ...data2], d => d.timestamp), d3.max([...data1, ...data2], d => d.timestamp)])
+.range([0, width]);
+
+const y = d3.scaleLinear()
+.domain([d3.min([...data1, ...data2], d => d.Lmax) - 10, d3.max([...data1, ...data2], d => d.Lmax) + 10]) // Add some padding
+.range([height, 0]);
+
+// Create the X and Y axes
+svg.append("g")
+.attr("transform", `translate(0,${height})`)
+.call(d3.axisBottom(x).ticks(5));
+
+svg.append("g")
+.call(d3.axisLeft(y));
+
+// Create the line generator for the first series (id = 17)
+const line1 = d3.line()
+.x(d => x(d.timestamp))
+.y(d => y(d.Lmax))
+.curve(d3.curveMonotoneX); // Smooth the line
+
+// Append the line for the first series
+svg.append("path")
+.datum(data1)
+.attr("fill", "none")
+.attr("stroke", "steelblue")
+.attr("stroke-width", 1.5)
+.attr("d", line1);
+
+// Add circles for the first series data points
+// svg.selectAll("dot1")
+// .data(data1)
+// .enter().append("circle")
+// .attr("r", 4)
+// .attr("cx", d => x(d.timestamp))
+// .attr("cy", d => y(d.loudness))
+// .attr("fill", "blue");
+
+// Create the line generator for the second series (id = 16)
+const line2 = d3.line()
+.x(d => x(d.timestamp))
+.y(d => y(d.Lmax))
+.curve(d3.curveMonotoneX); // Smooth the line
+
+// Append the line for the second series
+svg.append("path")
+.datum(data2)
+.attr("fill", "none")
+.attr("stroke", "red") // Different color for second series
+.attr("stroke-width", 1.5)
+.attr("stroke-opacity", 0.4)
+.attr("d", line2);
+
+svg.append("path")
+.datum(data3)
+.attr("fill", "none")
+.attr("stroke", "green") // Different color for second series
+.attr("stroke-width", 1.5)
+.attr("stroke-opacity", 0.7)
+.attr("d", line2);
+
+        // Add legend
+        const legend = svg.append("g")
+            .attr("transform", `translate(${100},${10})`);
+
+
+        }
+    </script>
+</body>
+</html>
