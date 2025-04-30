@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from api.endpoints import sensors
 from vis import app as vis_app
+from mangum import Mangum
 
 app = FastAPI()
 
@@ -16,3 +17,6 @@ app.mount("/", vis_app)
 async def read_root():
     with open("templates/index.html", "r") as file:
         return file.read()
+
+# Create a handler for AWS Lambda
+lambda_handler = Mangum(app)

@@ -1,5 +1,7 @@
 # requirements.txt
-fastapi
-uvicorn
+fastapi==0.115.12
+uvicorn==0.29.0
 jinja2
-requests
+requests==2.31.0
+boto3
+mangum

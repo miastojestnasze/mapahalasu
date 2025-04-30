@@ -1,0 +1,9 @@
+.venv
+env
+.venv/
+__pycache__/
+__pycache__
+*.egg-info
+*.pyc
+dane_czuj*
+dane_czujnikow_last_backup.csv
