@@ -52,12 +52,12 @@
 
         // Function to determine circle color based on Lmax value
         function getColor(lmax) {
-            return lmax > 85 ? '#d73027' :
-                   lmax > 75 ? '#fc8d59' :
-                   lmax > 65 ? '#fee08b' :
-                   lmax > 55 ? '#d9ef8b' :
-                   lmax > 45 ? '#91cf60' :
-                               '#1a9850';
+            return lmax > 65 ? '#FF080E' :
+                   lmax > 60 ? '#DF1E00' :
+                   lmax > 55 ? '#FF552B' :
+                   lmax > 50 ? '#DF8A09' :
+                   lmax > 45 ? '#BF9E00' :
+                               '#9F9F00';
         }
 
         // Function to determine circle radius based on Lmax value
@@ -86,7 +86,7 @@
 
         legend.onAdd = function(map) {
             const div = L.DomUtil.create('div', 'legend');
-            const grades = [0, 45, 55, 65, 75, 85];
+            const grades = [0, 45, 50, 55, 60, 65];
             const labels = [];
 
             div.innerHTML = '<h4>Poziom Hałasu (dB)</h4>';
@@ -145,9 +145,12 @@
                                 longitude = 20.983706185161118;
                                 break;
                             case 'mjn-cz-noise-3':
-                            case 'mjn-cz-noise3':
                                 latitude = 52.232191391261274;
                                 longitude = 21.00288934332785;
+                                break;
+                            case 'mjn-cz-noise-4':
+                                latitude = 52.224962408624435;
+                                longitude = 20.938818834103355;
                                 break;
                             case 'mjn-test-1':
                                 latitude = 52.244779671170875;

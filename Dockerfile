@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 2345
 
 # Command to run the application
-CMD ["uvicorn", "vis:app", "--host", "0.0.0.0", "--port", "2345"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "2345"]
