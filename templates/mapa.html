@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Hałasu MJN</title>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+    <!-- Add Chart.js for the popup charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+            padding: 0;
+            z-index: 1000;
+        }
+        .navbar a {
+            float: left;
+            color: #f2f2f2;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            font-size: 17px;
+            font-family: Arial, sans-serif;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .navbar a.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #map {
+            flex-grow: 1;
+            width: 100%;
+        }
+        .info-panel {
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .legend {
+            line-height: 18px;
+            color: #555;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+        
+        /* Style for welcome box */
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .welcome-box {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 80%;
+        }
+        
+        .welcome-box h2 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        
+        .welcome-box p {
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        
+        .close-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 30px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .close-button:hover {
+            background-color: #45a049;
+        }
+
+        /* Styling for the chart in popup */
+        .popup-chart-container {
+            width: 300px;
+            height: 200px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Welcome Box -->
+    <div id="welcomeOverlay" class="welcome-overlay">
+        <div class="welcome-box">
+            <h2>Witaj!</h2>
+            <p>Witamy na edukacyjnej stronie poświęconej hałasowi.</p>
+            <button id="closeWelcomeButton" class="close-button">Zamknij</button>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <div class="navbar">
+        <a href="/" class="active">Mapa</a>
+        <a href="/omapie">O mapie</a>
+    </div>
+    
+    <div id="map"></div>
+    
+    <script>
+        // Welcome box handling - close only when clicking the button
+        const welcomeOverlay = document.getElementById('welcomeOverlay');
+        const closeButton = document.getElementById('closeWelcomeButton');
+        
+        closeButton.addEventListener('click', function() {
+            welcomeOverlay.style.display = 'none';
+        });
+        
+        // Initialize the map centered on Warsaw
+        const map = L.map('map').setView([52.229676, 21.012229], 12);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Function to determine circle color based on Lmax value
+        function getColor(lmax) {
+            return lmax > 65 ? '#ff0000':
+                   lmax > 60 ? '#ff2600' :
+                   lmax > 55 ? '#FF552B' :
+                   lmax > 50 ? '#DF8A09' :
+                   lmax > 45 ? '#BF9E00' :
+                               '#9F9F00';
+        }
+
+        // Function to determine circle radius based on Lmax value
+        function getRadius(lmax) {
+            return lmax * 0.5; // Reduced from 0.8 to 0.5 to make circles smaller
+        }
+
+        // Create info panel
+        const info = L.control();
+
+        info.onAdd = function(map) {
+            this._div = L.DomUtil.create('div', 'info-panel');
+            this.update();
+            return this._div;
+        };
+
+        info.update = function(props) {
+            this._div.innerHTML = '<h4>Mapa Hałasu MJN</h4>';
+            // Removed the hover text - now only showing the title
+        };
+
+        info.addTo(map);
+
+        // Create legend
+        const legend = L.control({position: 'bottomright'});
+
+        legend.onAdd = function(map) {
+            const div = L.DomUtil.create('div', 'legend');
+            const grades = [0, 45, 50, 55, 60, 65];
+            const labels = [];
+
+            div.innerHTML = '<h4>Poziom Hałasu (dB)</h4>';
+
+            // Loop through our density intervals and generate a label with a colored square for each interval
+            for (let i = 0; i < grades.length; i++) {
+                div.innerHTML +=
+                    '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+                    grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+            }
+
+            // Add gray for inactive sensors
+            div.innerHTML +=
+                '<i style="background:#888888"></i> Brak danych w 24h<br>';
+
+            return div;
+        };
+
+        legend.addTo(map);
+
+        // Store all sensor data globally for chart creation
+        let allSensorData = [];
+
+        // Function to create a chart showing noise level changes over time
+        function createNoiseChart(sensorId, canvasId) {
+            // Get the last 24 hours of data for this sensor
+            const currentTimestamp = Math.floor(Date.now() / 1000);
+            const oneDayAgo = currentTimestamp - 86400;
+            
+            // Filter data for this sensor and for the last 24 hours
+            let sensorData = allSensorData.filter(reading => {
+                return reading.id === sensorId && reading.timestamp >= oneDayAgo;
+            });
+            
+            // Sort by timestamp
+            sensorData.sort((a, b) => a.timestamp - b.timestamp);
+            
+            // If there's no data, show a message
+            if (sensorData.length === 0) {
+                document.getElementById(canvasId).style.display = 'none';
+                const container = document.getElementById(canvasId).parentNode;
+                const noDataMsg = document.createElement('p');
+                noDataMsg.textContent = 'Brak danych z ostatnich 24 godzin.';
+                noDataMsg.style.textAlign = 'center';
+                noDataMsg.style.fontStyle = 'italic';
+                noDataMsg.style.color = '#888';
+                container.appendChild(noDataMsg);
+                return;
+            }
+            
+            // Prepare data points for chart
+            const labels = sensorData.map(reading => {
+                const date = new Date(reading.timestamp * 1000);
+                return date.getHours() + ':' + (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+            });
+            
+            const noiseLevels = sensorData.map(reading => reading.Lmax || reading.loudness || 0);
+            
+            // Create the chart
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Poziom hałasu (dB)',
+                        data: noiseLevels,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0, // Remove point circles
+                        pointHoverRadius: 6, // Show points only on hover
+                        pointHoverBackgroundColor: 'rgba(75, 192, 192, 1)',
+                        pointHitRadius: 10 // Larger area for hover detection
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: Math.max(0, Math.min(...noiseLevels) - 5),
+                            title: {
+                                display: true,
+                                text: 'dB'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Godzina'
+                            },
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8 // Limit the number of x-axis labels
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Poziom hałasu w ostatnich 24 godzinach'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        legend: {
+                            display: false // Hide legend since there's only one dataset
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        // Fetch sensor data
+        fetch('/dane_czujnikow')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Sensor data:', data);
+                
+                // Store all data globally
+                allSensorData = data;
+                
+                // Create a map to store the latest reading for each sensor
+                const latestSensorData = new Map();
+                
+                // Process all data to find the latest reading for each sensor
+                data.forEach(sensor => {
+                    const sensorId = sensor.id;
+                    const timestamp = sensor.timestamp || 0;
+                    
+                    // If we haven't seen this sensor before, or if this reading is newer
+                    if (!latestSensorData.has(sensorId) || 
+                        timestamp > latestSensorData.get(sensorId).timestamp) {
+                        latestSensorData.set(sensorId, sensor);
+                    }
+                });
+                
+                console.log('Latest sensor data:', Array.from(latestSensorData.values()));
+                
+                // Get current timestamp in seconds
+                const currentTimestamp = Math.floor(Date.now() / 1000);
+                // 24 hours in seconds = 86400
+                const oneDayInSeconds = 86400;
+                
+                // Add circle markers only for the latest reading of each sensor
+                latestSensorData.forEach(sensor => {
+                    // Check if sensor has location data, otherwise use predefined locations for known sensors
+                    let latitude, longitude;
+                    if (sensor.location && sensor.location.latitude && sensor.location.longitude) {
+                        latitude = sensor.location.latitude;
+                        longitude = sensor.location.longitude;
+                    } else {
+                        // Use specific coordinates for known sensors
+                        switch (sensor.id) {
+                            // Ursus Orl 48
+                            case 'mjn-u-cz1':
+                                latitude = 52.19140609168865;
+                                longitude = 20.865002342426457;
+                                break;
+                            // Mokotów - Puławska
+                            //52.18537405002677, 21.02376408062907
+                            case 'mjn-cz-noise-5':
+                                latitude = 52.18535469628882;
+                                longitude = 21.02372229587361;
+                                break;
+                            // Śródmieście - Emilii Plater
+                            case 'mjn-cz-noise-3':
+                                latitude = 52.232191391261274;
+                                longitude = 21.00288934332785;
+                                break;
+                            // Wola - Kazi
+                            //52.22491799933131, 20.93898212739405
+                            case 'mjn-cz-noise-4':
+                                latitude = 52.224962408624435;
+                                longitude = 20.938818834103355;
+                                break;
+                            // Ochota 52.2150193447921, 20.981574559671962
+                            case 'mjn-cz-noise-6':
+                                latitude = 52.2150193447921;
+                                longitude = 20.981574559671962;
+                                break;
+                            case 'mjn-test-1':
+                                latitude = 52.244779671170875;
+                                longitude = 20.95057553981963;
+                                break;
+                            default:
+                                // Random location in Warsaw for unknown sensors
+                                latitude = 52.2297 + (Math.random() * 0.05 - 0.025);
+                                longitude = 21.0122 + (Math.random() * 0.05 - 0.025);
+                        }
+                    }
+                    
+                    // Ensure Lmax value exists, use loudness as fallback
+                    const noiseLevel = sensor.Lmax || sensor.loudness || 60; // Default to 60 if no value
+                    
+                    // Check if data is older than 24 hours
+                    const isDataOld = (currentTimestamp - sensor.timestamp) > oneDayInSeconds;
+                    
+                    // Use gray color if data is old, otherwise use the color based on noise level
+                    const circleColor = isDataOld ? '#888888' : getColor(noiseLevel);
+                    
+                    const circle = L.circleMarker([latitude, longitude], {
+                        color: circleColor,
+                        fillColor: circleColor,
+                        fillOpacity: 0.8,
+                        weight: 1,
+                        radius: getRadius(noiseLevel)
+                    }).addTo(map);
+
+                    // Add text label showing the noise level below the circle
+                    const labelOffset = getRadius(noiseLevel) / 2 + 12; // Calculate offset based on circle radius
+                    const textLabel = L.divIcon({
+                        html: `<div style="text-align: center; font-weight: bold; color: #333; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">${Math.round(noiseLevel)} dB</div>`,
+                        className: 'noise-label',
+                        iconSize: [60, 20],
+                        iconAnchor: [30, -labelOffset]
+                    });
+
+                    L.marker([latitude, longitude], {
+                        icon: textLabel,
+                        interactive: false // Make the text non-interactive so it doesn't interfere with circle clicks
+                    }).addTo(map);
+
+                    // Create a unique ID for the chart canvas
+                    const chartId = `chart-${sensor.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                    
+                    // Add popup with sensor info and chart
+                    const timestamp = sensor.timestamp ? 
+                        new Date(sensor.timestamp * 1000).toLocaleString() : 
+                        'Nieznany';
+                    
+                    // Add information about data freshness to popup
+                    const dataAgeInfo = isDataOld ? 
+                        '<p style="color: #888;"><strong>Uwaga:</strong> Dane starsze niż 24 godziny</p>' : 
+                        '';
+
+                    circle.bindPopup(`
+                        <h3>Czujnik: ${sensor.id}</h3>
+                        <p><strong>Poziom hałasu:</strong> ${noiseLevel} dB</p>
+                        <p><strong>Czas pomiaru:</strong> ${timestamp}</p>
+                        ${dataAgeInfo}
+                        <div class="popup-chart-container">
+                            <canvas id="${chartId}"></canvas>
+                        </div>
+                    `);
+
+                    // Create a sensor props object for the info panel
+                    const sensorProps = {
+                        id: sensor.id,
+                        Lmax: noiseLevel,
+                        timestamp: sensor.timestamp || 0
+                    };
+
+                    // Create chart when popup is opened
+                    circle.on('popupopen', function() {
+                        setTimeout(() => {
+                            createNoiseChart(sensor.id, chartId);
+                        }, 100); // Small delay to ensure the canvas is ready
+                    });
+
+                    // Mouseover and mouseout events
+                    circle.on('mouseover', function() {
+                        // Don't open popup automatically on mouseover
+                        info.update(sensorProps);
+                    });
+
+                    circle.on('mouseout', function() {
+                        info.update();
+                    });
+
+                    // Add click handler to open popup
+                    circle.on('click', function() {
+                        this.openPopup();
+                    });
+                });
+            })
+            .catch(error => console.error('Error fetching sensor data:', error));
+    </script>
+</body>
+</html>

@@ -1,6 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse, JSONResponse
 import requests
+import sqlite3
+from sqlite3 import Error
+import os
+from typing import List, Optional
+from pydantic import BaseModel
+from datetime import date
 
 
 # uvicorn app:app --reload --port 2345
@@ -8,18 +14,22 @@ import requests
 app = FastAPI()
 
 
+
 @app.get("/")
 async def get_index():
-    return FileResponse("templates/map.html")
+    return FileResponse("templates/mapa.html")
 
 @app.get("/wykres")
 async def get_map():
      return FileResponse("templates/wykres.html")   
 
+@app.get("/omapie")
+async def get_about():
+    return FileResponse("templates/omapie.html")
 
-@app.get("/hex")
+@app.get("/test")
 async def get_test():
-    return FileResponse("templates/s3site.html")
+    return FileResponse("templates/static.html")
 
 
 @app.get("/dane_czujnikow")
@@ -29,7 +39,6 @@ async def dane_czujnikow():
     url = "http://vps-76e4aba0.vps.ovh.net/samples"
 
     # Send a GET request to fetch data
-
     response = requests.get(url, params={'offset':453300, 'limit':30000000})
 
 
@@ -47,5 +56,6 @@ async def dane_czujnikow():
         print(f"Failed to fetch data. HTTP Status code: {response.status_code}")
 
     return JSONResponse(content=data)
+
 
 
