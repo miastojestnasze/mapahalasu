@@ -4,37 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>O mapie hałasu MJN</title>
+    <!-- Add Figtree font -->
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Figtree', sans-serif;
             line-height: 1.6;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
         .navbar {
-            background-color: #333;
+            background-color: #FDF312;
             overflow: hidden;
             padding: 0;
             z-index: 1000;
+            position: relative;
+            display: flex;
+            align-items: center;
         }
         .navbar a {
             float: left;
-            color: #f2f2f2;
+            color: #333;
             text-align: center;
             padding: 14px 16px;
             text-decoration: none;
             font-size: 17px;
+            font-family: 'Figtree', sans-serif;
+            font-weight: 600;
+            height: 100%;
+            box-sizing: border-box;
         }
         .navbar a:hover {
-            background-color: #ddd;
+            background-color: #e6dc10;
             color: black;
         }
         .navbar a.active {
-            background-color: #4CAF50;
-            color: white;
+            background-color: #e6dc10;
+            color: black;
+        }
+        .navbar-logo {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 15px;
+        }
+        .navbar-logo img {
+            height: 30px;
+            display: block;
         }
         .content {
             max-width: 800px;
@@ -44,7 +64,7 @@
             text-align: center;
         }
         h1 {
-            color: #4CAF50;
+            color: #000000;
             margin-bottom: 30px;
         }
         p {
@@ -54,7 +74,7 @@
         }
         .highlight {
             font-weight: bold;
-            color: #4CAF50;
+            color: #a18ffa;
         }
         .footer {
             background-color: #333;
@@ -68,8 +88,11 @@
 <body>
     <!-- Navigation Bar -->
     <div class="navbar">
-        <a href="/" class="active">Mapa</a>
-        <a href="/omapie">O mapie</a>D
+        <a href="static.html">Mapa</a>
+        <a href="omapie.html" class="active">O mapie</a>
+        <div class="navbar-logo">
+            <img src="logo.png" alt="Logo MJN">
+        </div>
     </div>
     
     <div class="content">
@@ -88,7 +111,7 @@
         </p>
         
         <p>
-            Dane z czujników są zbierane, analizowane i prezentowane na interaktywnej mapie, którą właśnie oglądasz. 
+            Dane z czujników są zbierane i prezentowane na interaktywnej mapie, którą właśnie oglądasz. 
             Dzięki temu mieszkańcy Warszawy mogą sprawdzić, jak głośno jest w różnych częściach miasta, 
             a władze miejskie otrzymują cenne informacje, które mogą wykorzystać do planowania działań 
             zmierzających do redukcji hałasu.
@@ -105,10 +128,8 @@
         </ul>
         
         <p>
-            Projekt realizowany jest przez wolontariuszy stowarzyszenia Miasto Jest Nasze przy wsparciu mieszkańców, 
-            którzy udostępniają miejsca do montażu czujników. Jeśli chcesz pomóc w rozbudowie sieci czujników 
-            lub masz pytania dotyczące projektu, skontaktuj się z nami poprzez stronę 
-            <a href="https://miastojestnasze.org" target="_blank">miastojestnasze.org</a>.
+            Jeśli masz pytania dotyczące projektu, skontaktuj się z nami poprzez stronę 
+            <a href="https://miastojestnasze.org" target="_blank" style="color: #a18ffa; font-weight: 600;">miastojestnasze.org</a>.
         </p>
     </div>
     

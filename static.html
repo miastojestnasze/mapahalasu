@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Hałasu MJN</title>
+    <title>Mapa Hałasu MJN - Wersja Statyczna</title>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
     <!-- Add Chart.js for the popup charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Add Figtree font -->
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -15,29 +17,36 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            font-family: 'Figtree', sans-serif;
         }
         .navbar {
-            background-color: #333;
+            background-color: #FDF312;
             overflow: hidden;
             padding: 0;
             z-index: 1000;
+            position: relative;
+            display: flex;
+            align-items: center;
         }
         .navbar a {
             float: left;
-            color: #f2f2f2;
+            color: #333;
             text-align: center;
             padding: 14px 16px;
             text-decoration: none;
             font-size: 17px;
-            font-family: Arial, sans-serif;
+            font-family: 'Figtree', sans-serif;
+            font-weight: 600;
+            height: 100%;
+            box-sizing: border-box;
         }
         .navbar a:hover {
-            background-color: #ddd;
+            background-color: #e6dc10;
             color: black;
         }
         .navbar a.active {
-            background-color: #4CAF50;
-            color: white;
+            background-color: #e6dc10;
+            color: black;
         }
         #map {
             flex-grow: 1;
@@ -62,6 +71,18 @@
             float: left;
             margin-right: 8px;
             opacity: 0.7;
+        }
+        .loading-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
         }
         
         /* Style for welcome box */
@@ -89,7 +110,7 @@
         }
         
         .welcome-box h2 {
-            color: #4CAF50;
+            color: #000000; /* Changed from #4CAF50 to black */
             margin-top: 0;
         }
         
@@ -102,17 +123,18 @@
             display: inline-block;
             margin-top: 20px;
             padding: 10px 30px;
-            background-color: #4CAF50;
-            color: white;
+            background-color: #FDF312;
+            color: #333;
             border: none;
             border-radius: 5px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
             transition: background-color 0.3s;
         }
         
         .close-button:hover {
-            background-color: #45a049;
+            background-color: #e6dc10;
         }
 
         /* Styling for the chart in popup */
@@ -121,13 +143,30 @@
             height: 200px;
             margin-top: 15px;
         }
+
+        /* Logo styling */
+        .navbar-logo {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 15px;
+        }
+
+        .navbar-logo img {
+            height: 30px;
+            display: block;
+        }
     </style>
 </head>
 <body>
     <!-- Welcome Box -->
     <div id="welcomeOverlay" class="welcome-overlay">
         <div class="welcome-box">
-            <h2>Witaj!</h2>
+            <h2>Mapa Hałasu MJN</h2>
+            <div style="text-align: center;">
+                <img src="syrenka_halas.png" alt="Syrenka Hałasu" style="max-width: 150px; margin: 15px auto; display: block;">
+            </div>
             <p>Witamy na edukacyjnej stronie poświęconej hałasowi.</p>
             <button id="closeWelcomeButton" class="close-button">Zamknij</button>
         </div>
@@ -135,11 +174,16 @@
 
     <!-- Navigation Bar -->
     <div class="navbar">
-        <a href="/" class="active">Mapa</a>
-        <a href="/omapie">O mapie</a>
+        <a href="static.html" class="active">Mapa</a>
+        <a href="omapie.html">O mapie</a>
+        <!-- Logo on the right side -->
+        <div class="navbar-logo">
+            <img src="logo.png" alt="Logo">
+        </div>
     </div>
     
     <div id="map"></div>
+    <div id="loading" class="loading-indicator">Ładowanie danych...</div>
     
     <script>
         // Welcome box handling - close only when clicking the button
@@ -184,8 +228,11 @@
         };
 
         info.update = function(props) {
-            this._div.innerHTML = '<h4>Mapa Hałasu MJN</h4>';
-            // Removed the hover text - now only showing the title
+            this._div.innerHTML = `
+                <h4>Mapa Hałasu MJN</h4>
+                <img src="syrenka_halas.png" alt="Syrenka Hałasu" style="max-width: 100%; max-height: 100px; margin-top: 10px;">
+            `;
+            // Removed the hover text - now only showing the title and image
         };
 
         info.addTo(map);
@@ -207,14 +254,16 @@
                     grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
             }
 
-            // Add gray for inactive sensors
-            div.innerHTML +=
-                '<i style="background:#888888"></i> Brak danych w 24h<br>';
+            // Add gray for inactive sensors - positioned on a new line below the 65+ entry
+            div.innerHTML += '<br><i style="background:#888888"></i> Brak danych w 24h<br>';
 
             return div;
         };
 
         legend.addTo(map);
+
+        // Show loading indicator
+        document.getElementById('loading').style.display = 'block';
 
         // Store all sensor data globally for chart creation
         let allSensorData = [];
@@ -263,8 +312,8 @@
                     datasets: [{
                         label: 'Poziom hałasu (dB)',
                         data: noiseLevels,
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(161, 143, 250, 0.2)', // Changed to #a18ffa with opacity
+                        borderColor: '#a18ffa', // Changed to #a18ffa
                         borderWidth: 3,
                         fill: true,
                         tension: 0.4,
@@ -320,10 +369,22 @@
             });
         }
 
-        // Fetch sensor data
-        fetch('/dane_czujnikow')
-            .then(response => response.json())
+        // Fetch sensor data from the server directly
+        const apiUrl = new URL('http://vps-76e4aba0.vps.ovh.net/samples');
+        apiUrl.searchParams.append('offset', '453300');
+        apiUrl.searchParams.append('limit', '30000000');
+
+        fetch(apiUrl.toString())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
             .then(data => {
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                
                 console.log('Sensor data:', data);
                 
                 // Store all data globally
@@ -367,7 +428,6 @@
                                 longitude = 20.865002342426457;
                                 break;
                             // Mokotów - Puławska
-                            //52.18537405002677, 21.02376408062907
                             case 'mjn-cz-noise-5':
                                 latitude = 52.18535469628882;
                                 longitude = 21.02372229587361;
@@ -378,12 +438,11 @@
                                 longitude = 21.00288934332785;
                                 break;
                             // Wola - Kazi
-                            //52.22491799933131, 20.93898212739405
                             case 'mjn-cz-noise-4':
                                 latitude = 52.224962408624435;
                                 longitude = 20.938818834103355;
                                 break;
-                            // Ochota 52.2150193447921, 20.981574559671962
+                            // Ochota
                             case 'mjn-cz-noise-6':
                                 latitude = 52.2150193447921;
                                 longitude = 20.981574559671962;
@@ -415,7 +474,7 @@
                         weight: 1,
                         radius: getRadius(noiseLevel)
                     }).addTo(map);
-
+                    
                     // Add text label showing the noise level below the circle
                     const labelOffset = getRadius(noiseLevel) / 2 + 12; // Calculate offset based on circle radius
                     const textLabel = L.divIcon({
@@ -483,7 +542,12 @@
                     });
                 });
             })
-            .catch(error => console.error('Error fetching sensor data:', error));
+            .catch(error => {
+                // Hide loading indicator and show error
+                document.getElementById('loading').style.display = 'none';
+                console.error('Error fetching sensor data:', error);
+                alert('Wystąpił błąd podczas pobierania danych: ' + error.message);
+            });
     </script>
 </body>
 </html>
