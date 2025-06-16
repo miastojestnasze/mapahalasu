@@ -157,7 +157,7 @@
             height: 30px;
             display: block;
         }
-    </style>
+        </style>
 </head>
 <body>
     <!-- Welcome Box -->
@@ -374,180 +374,215 @@
         apiUrl.searchParams.append('offset', '453300');
         apiUrl.searchParams.append('limit', '30000000');
 
-        fetch(apiUrl.toString())
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Hide loading indicator
-                document.getElementById('loading').style.display = 'none';
-                
-                console.log('Sensor data:', data);
-                
-                // Store all data globally
-                allSensorData = data;
-                
-                // Create a map to store the latest reading for each sensor
-                const latestSensorData = new Map();
-                
-                // Process all data to find the latest reading for each sensor
-                data.forEach(sensor => {
-                    const sensorId = sensor.id;
-                    const timestamp = sensor.timestamp || 0;
-                    
-                    // If we haven't seen this sensor before, or if this reading is newer
-                    if (!latestSensorData.has(sensorId) || 
-                        timestamp > latestSensorData.get(sensorId).timestamp) {
-                        latestSensorData.set(sensorId, sensor);
+        // Create a mapping of sensor IDs to friendly location names
+        const sensorNames = {
+            'mjn-u-cz1': 'Ursus, ul. Orląt Lwowskich',
+            'mjn-cz-noise-5': 'Mokotów, ul. Puławska',
+            'mjn-cz-noise-3': 'Śródmieście, ul. Emilii Plater',
+            'mjn-cz-noise-4': 'Wola, ul. Goleszowska',
+            'mjn-cz-noise-6': 'Ochota, ul. Grójecka',
+            'mjn-test-1': 'Wola, ul. D. Siedzikówny "Inki"'
+        };
+
+        function fetchData() {
+            fetch(apiUrl.toString())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
                     }
-                });
-                
-                console.log('Latest sensor data:', Array.from(latestSensorData.values()));
-                
-                // Get current timestamp in seconds
-                const currentTimestamp = Math.floor(Date.now() / 1000);
-                // 24 hours in seconds = 86400
-                const oneDayInSeconds = 86400;
-                
-                // Add circle markers only for the latest reading of each sensor
-                latestSensorData.forEach(sensor => {
-                    // Check if sensor has location data, otherwise use predefined locations for known sensors
-                    let latitude, longitude;
-                    if (sensor.location && sensor.location.latitude && sensor.location.longitude) {
-                        latitude = sensor.location.latitude;
-                        longitude = sensor.location.longitude;
-                    } else {
-                        // Use specific coordinates for known sensors
-                        switch (sensor.id) {
-                            // Ursus Orl 48
-                            case 'mjn-u-cz1':
-                                latitude = 52.19140609168865;
-                                longitude = 20.865002342426457;
-                                break;
-                            // Mokotów - Puławska
-                            case 'mjn-cz-noise-5':
-                                latitude = 52.18535469628882;
-                                longitude = 21.02372229587361;
-                                break;
-                            // Śródmieście - Emilii Plater
-                            case 'mjn-cz-noise-3':
-                                latitude = 52.232191391261274;
-                                longitude = 21.00288934332785;
-                                break;
-                            // Wola - Kazi
-                            case 'mjn-cz-noise-4':
-                                latitude = 52.224962408624435;
-                                longitude = 20.938818834103355;
-                                break;
-                            // Ochota
-                            case 'mjn-cz-noise-6':
-                                latitude = 52.2150193447921;
-                                longitude = 20.981574559671962;
-                                break;
-                            case 'mjn-test-1':
-                                latitude = 52.244779671170875;
-                                longitude = 20.95057553981963;
-                                break;
-                            default:
-                                // Random location in Warsaw for unknown sensors
-                                latitude = 52.2297 + (Math.random() * 0.05 - 0.025);
-                                longitude = 21.0122 + (Math.random() * 0.05 - 0.025);
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading indicator
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    console.log('Sensor data:', data);
+                    
+                    // Store all data globally
+                    allSensorData = data;
+                    
+                    // Create a map to store the latest reading for each sensor
+                    const latestSensorData = new Map();
+                    
+                    // Process all data to find the latest reading for each sensor
+                    data.forEach(sensor => {
+                        const sensorId = sensor.id;
+                        const timestamp = sensor.timestamp || 0;
+                        
+                        // If we haven't seen this sensor before, or if this reading is newer
+                        if (!latestSensorData.has(sensorId) || 
+                            timestamp > latestSensorData.get(sensorId).timestamp) {
+                            latestSensorData.set(sensorId, sensor);
                         }
-                    }
-                    
-                    // Ensure Lmax value exists, use loudness as fallback
-                    const noiseLevel = sensor.Lmax || sensor.loudness || 60; // Default to 60 if no value
-                    
-                    // Check if data is older than 24 hours
-                    const isDataOld = (currentTimestamp - sensor.timestamp) > oneDayInSeconds;
-                    
-                    // Use gray color if data is old, otherwise use the color based on noise level
-                    const circleColor = isDataOld ? '#888888' : getColor(noiseLevel);
-                    
-                    const circle = L.circleMarker([latitude, longitude], {
-                        color: circleColor,
-                        fillColor: circleColor,
-                        fillOpacity: 0.8,
-                        weight: 1,
-                        radius: getRadius(noiseLevel)
-                    }).addTo(map);
-                    
-                    // Add text label showing the noise level below the circle
-                    const labelOffset = getRadius(noiseLevel) / 2 + 12; // Calculate offset based on circle radius
-                    const textLabel = L.divIcon({
-                        html: `<div style="text-align: center; font-weight: bold; color: #333; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">${Math.round(noiseLevel)} dB</div>`,
-                        className: 'noise-label',
-                        iconSize: [60, 20],
-                        iconAnchor: [30, -labelOffset]
                     });
-
-                    L.marker([latitude, longitude], {
-                        icon: textLabel,
-                        interactive: false // Make the text non-interactive so it doesn't interfere with circle clicks
-                    }).addTo(map);
-
-                    // Create a unique ID for the chart canvas
-                    const chartId = `chart-${sensor.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
                     
-                    // Add popup with sensor info and chart
-                    const timestamp = sensor.timestamp ? 
-                        new Date(sensor.timestamp * 1000).toLocaleString() : 
-                        'Nieznany';
+                    console.log('Latest sensor data:', Array.from(latestSensorData.values()));
                     
-                    // Add information about data freshness to popup
-                    const dataAgeInfo = isDataOld ? 
-                        '<p style="color: #888;"><strong>Uwaga:</strong> Dane starsze niż 24 godziny</p>' : 
-                        '';
+                    // Get current timestamp in seconds
+                    const currentTimestamp = Math.floor(Date.now() / 1000);
+                    // 24 hours in seconds = 86400
+                    const oneDayInSeconds = 86400;
+                    
+                    // Add circle markers only for the latest reading of each sensor
+                    latestSensorData.forEach(sensor => {
+                        // Check if sensor has location data, otherwise use predefined locations for known sensors
+                        let latitude, longitude;
+                        if (sensor.location && sensor.location.latitude && sensor.location.longitude) {
+                            latitude = sensor.location.latitude;
+                            longitude = sensor.location.longitude;
+                        } else {
+                            // Use specific coordinates for known sensors
+                            switch (sensor.id) {
+                                // Ursus Orl 48
+                                case 'mjn-u-cz1':
+                                    latitude = 52.19140609168865;
+                                    longitude = 20.865002342426457;
+                                    break;
+                                // Mokotów - Puławska
+                                case 'mjn-cz-noise-5':
+                                    latitude = 52.18535469628882;
+                                    longitude = 21.02372229587361;
+                                    break;
+                                // Śródmieście - Emilii Plater
+                                case 'mjn-cz-noise-3':
+                                    latitude = 52.232191391261274;
+                                    longitude = 21.00288934332785;
+                                    break;
+                                // Wola - Kazi
+                                case 'mjn-cz-noise-4':
+                                    latitude = 52.224962408624435;
+                                    longitude = 20.938818834103355;
+                                    break;
+                                // Ochota
+                                case 'mjn-cz-noise-6':
+                                    latitude = 52.2150193447921;
+                                    longitude = 20.981574559671962;
+                                    break;
+                                case 'mjn-test-1':
+                                    latitude = 52.244779671170875;
+                                    longitude = 20.95057553981963;
+                                    break;
+                                default:
+                                    // Random location in Warsaw for unknown sensors
+                                    latitude = 52.2297 + (Math.random() * 0.05 - 0.025);
+                                    longitude = 21.0122 + (Math.random() * 0.05 - 0.025);
+                            }
+                        }
+                        
+                        // Ensure Lmax value exists, use loudness as fallback
+                        const noiseLevel = sensor.Lmax || sensor.loudness || 60; // Default to 60 if no value
+                        
+                        // Check if data is older than 24 hours
+                        const isDataOld = (currentTimestamp - sensor.timestamp) > oneDayInSeconds;
+                        
+                        // Use gray color if data is old, otherwise use the color based on noise level
+                        const circleColor = isDataOld ? '#888888' : getColor(noiseLevel);
+                        
+                        const circle = L.circleMarker([latitude, longitude], {
+                            color: circleColor,
+                            fillColor: circleColor,
+                            fillOpacity: 0.8,
+                            weight: 1,
+                            radius: getRadius(noiseLevel)
+                        }).addTo(map);
+                        
+                        // Add text label showing the noise level below the circle
+                        const labelOffset = getRadius(noiseLevel) / 2 + 12; // Calculate offset based on circle radius
+                        const textLabel = L.divIcon({
+                            html: `<div style="text-align: center; font-weight: bold; color: #333; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">${Math.round(noiseLevel)} dB</div>`,
+                            className: 'noise-label',
+                            iconSize: [60, 20],
+                            iconAnchor: [30, -labelOffset]
+                        });
 
-                    circle.bindPopup(`
-                        <h3>Czujnik: ${sensor.id}</h3>
-                        <p><strong>Poziom hałasu:</strong> ${noiseLevel} dB</p>
-                        <p><strong>Czas pomiaru:</strong> ${timestamp}</p>
-                        ${dataAgeInfo}
-                        <div class="popup-chart-container">
-                            <canvas id="${chartId}"></canvas>
-                        </div>
-                    `);
+                        L.marker([latitude, longitude], {
+                            icon: textLabel,
+                            interactive: false // Make the text non-interactive so it doesn't interfere with circle clicks
+                        }).addTo(map);
 
-                    // Create a sensor props object for the info panel
-                    const sensorProps = {
-                        id: sensor.id,
-                        Lmax: noiseLevel,
-                        timestamp: sensor.timestamp || 0
-                    };
+                        // Create a unique ID for the chart canvas
+                        const chartId = `chart-${sensor.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                        
+                        // Add popup with sensor info and chart
+                        const timestamp = sensor.timestamp ? 
+                            new Date(sensor.timestamp * 1000).toLocaleString('pl-PL', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            }).replace(/\./g, '-') : 
+                            'Nieznany';
+                        
+                        // Add information about data freshness to popup
+                        const dataAgeInfo = isDataOld ? 
+                            '<p style="color: #888;"><strong>Uwaga:</strong> Dane starsze niż 24 godziny</p>' : 
+                            '';
 
-                    // Create chart when popup is opened
-                    circle.on('popupopen', function() {
-                        setTimeout(() => {
-                            createNoiseChart(sensor.id, chartId);
-                        }, 100); // Small delay to ensure the canvas is ready
+                        circle.bindPopup(`
+                            <h3>${sensorNames[sensor.id] || sensor.id}</h3>
+                            <p><strong>Poziom hałasu:</strong> <span style="font-weight: 700; font-size: 1.3em;">${noiseLevel} dB</span></p>
+                            <p><strong>Czas pomiaru:</strong> ${timestamp}</p>
+                            ${dataAgeInfo}
+                            <div class="popup-chart-container">
+                                <canvas id="${chartId}"></canvas>
+                            </div>
+                        `);
+
+                        // Create a sensor props object for the info panel
+                        const sensorProps = {
+                            id: sensor.id,
+                            Lmax: noiseLevel,
+                            timestamp: sensor.timestamp || 0
+                        };
+
+                        // Create chart when popup is opened
+                        circle.on('popupopen', function() {
+                            setTimeout(() => {
+                                createNoiseChart(sensor.id, chartId);
+                            }, 10);
+                        });
+
+                        // When circle is clicked, update the info panel with this sensor's info
+                        circle.on('click', function() {
+                            info.update(sensorProps);
+                        });
                     });
-
-                    // Mouseover and mouseout events
-                    circle.on('mouseover', function() {
-                        // Don't open popup automatically on mouseover
-                        info.update(sensorProps);
-                    });
-
-                    circle.on('mouseout', function() {
-                        info.update();
-                    });
-
-                    // Add click handler to open popup
-                    circle.on('click', function() {
-                        this.openPopup();
-                    });
+                })
+                .catch(error => {
+                    console.error('There was a problem fetching the sensor data:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    alert('Wystąpił problem podczas ładowania danych.');
                 });
-            })
-            .catch(error => {
-                // Hide loading indicator and show error
-                document.getElementById('loading').style.display = 'none';
-                console.error('Error fetching sensor data:', error);
-                alert('Wystąpił błąd podczas pobierania danych: ' + error.message);
+        }
+        
+        // Initial data load
+        fetchData();
+        
+        // Function to refresh data
+        function refreshData() {
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Clear existing markers from map
+            map.eachLayer(function (layer) {
+                if (layer instanceof L.CircleMarker || 
+                    (layer instanceof L.Marker && layer.options.icon && layer.options.icon.options.className === 'noise-label')) {
+                    map.removeLayer(layer);
+                }
             });
+            
+            // Fetch fresh data
+            fetchData();
+        }
+        
+        // Set up automatic refresh every 3 minutes (180000 milliseconds)
+        const refreshInterval = 180000; // 3 minutes
+        setInterval(refreshData, refreshInterval);
+        
+        // Add a timer logging to console to confirm the interval is working
+        console.log('Auto-refresh set up to run every 3 minutes.');
     </script>
 </body>
 </html>
