@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,6 +20,7 @@
             height: 100vh;
             font-family: 'Figtree', sans-serif;
         }
+
         .navbar {
             background-color: #FDF312;
             overflow: hidden;
@@ -28,6 +30,7 @@
             display: flex;
             align-items: center;
         }
+
         .navbar a {
             float: left;
             color: #333;
@@ -40,24 +43,29 @@
             height: 100%;
             box-sizing: border-box;
         }
+
         .navbar a:hover {
             background-color: #e6dc10;
             color: black;
         }
+
         .navbar a.active {
             background-color: #e6dc10;
             color: black;
         }
+
         #map {
             flex-grow: 1;
             width: 100%;
         }
+
         .info-panel {
             padding: 10px;
             background: white;
             border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
         }
+
         .legend {
             line-height: 18px;
             color: #555;
@@ -65,6 +73,7 @@
             padding: 10px;
             border-radius: 5px;
         }
+
         .legend i {
             width: 18px;
             height: 18px;
@@ -72,6 +81,7 @@
             margin-right: 8px;
             opacity: 0.7;
         }
+
         .loading-indicator {
             position: absolute;
             top: 10px;
@@ -80,11 +90,11 @@
             background: white;
             padding: 10px;
             border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
             z-index: 1000;
             display: none;
         }
-        
+
         /* Style for welcome box */
         .welcome-overlay {
             position: fixed;
@@ -98,7 +108,7 @@
             align-items: center;
             z-index: 2000;
         }
-        
+
         .welcome-box {
             background-color: white;
             padding: 30px;
@@ -108,17 +118,18 @@
             max-width: 500px;
             width: 80%;
         }
-        
+
         .welcome-box h2 {
-            color: #000000; /* Changed from #4CAF50 to black */
+            color: #000000;
+            /* Changed from #4CAF50 to black */
             margin-top: 0;
         }
-        
+
         .welcome-box p {
             font-size: 18px;
             line-height: 1.6;
         }
-        
+
         .close-button {
             display: inline-block;
             margin-top: 20px;
@@ -132,7 +143,7 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        
+
         .close-button:hover {
             background-color: #e6dc10;
         }
@@ -157,15 +168,17 @@
             height: 30px;
             display: block;
         }
-        </style>
+    </style>
 </head>
+
 <body>
     <!-- Welcome Box -->
     <div id="welcomeOverlay" class="welcome-overlay">
         <div class="welcome-box">
             <h2>Mapa Hałasu MJN</h2>
             <div style="text-align: center;">
-                <img src="syrenka_halas.png" alt="Syrenka Hałasu" style="max-width: 150px; margin: 15px auto; display: block;">
+                <img src="syrenka_halas.png" alt="Syrenka Hałasu"
+                    style="max-width: 150px; margin: 15px auto; display: block;">
             </div>
             <p>Witamy na edukacyjnej stronie poświęconej hałasowi.</p>
             <button id="closeWelcomeButton" class="close-button">Zamknij</button>
@@ -181,19 +194,19 @@
             <img src="logo.png" alt="Logo">
         </div>
     </div>
-    
+
     <div id="map"></div>
     <div id="loading" class="loading-indicator">Ładowanie danych...</div>
-    
+
     <script>
         // Welcome box handling - close only when clicking the button
         const welcomeOverlay = document.getElementById('welcomeOverlay');
         const closeButton = document.getElementById('closeWelcomeButton');
-        
-        closeButton.addEventListener('click', function() {
+
+        closeButton.addEventListener('click', function () {
             welcomeOverlay.style.display = 'none';
         });
-        
+
         // Initialize the map centered on Warsaw
         const map = L.map('map').setView([52.229676, 21.012229], 12);
 
@@ -205,12 +218,12 @@
 
         // Function to determine circle color based on Lmax value
         function getColor(lmax) {
-            return lmax > 65 ? '#ff0000':
-                   lmax > 60 ? '#ff2600' :
-                   lmax > 55 ? '#FF552B' :
-                   lmax > 50 ? '#DF8A09' :
-                   lmax > 45 ? '#BF9E00' :
-                               '#9F9F00';
+            return lmax > 65 ? '#ff0000' :
+                lmax > 60 ? '#ff2600' :
+                    lmax > 55 ? '#FF552B' :
+                        lmax > 50 ? '#DF8A09' :
+                            lmax > 45 ? '#BF9E00' :
+                                '#9F9F00';
         }
 
         // Function to determine circle radius based on Lmax value
@@ -221,13 +234,13 @@
         // Create info panel
         const info = L.control();
 
-        info.onAdd = function(map) {
+        info.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'info-panel');
             this.update();
             return this._div;
         };
 
-        info.update = function(props) {
+        info.update = function (props) {
             this._div.innerHTML = `
                 <h4>Mapa Hałasu MJN</h4>
                 <img src="syrenka_halas.png" alt="Syrenka Hałasu" style="max-width: 100%; max-height: 100px; margin-top: 10px;">
@@ -238,9 +251,9 @@
         info.addTo(map);
 
         // Create legend
-        const legend = L.control({position: 'bottomright'});
+        const legend = L.control({ position: 'bottomright' });
 
-        legend.onAdd = function(map) {
+        legend.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'legend');
             const grades = [0, 45, 50, 55, 60, 65];
             const labels = [];
@@ -273,15 +286,15 @@
             // Get the last 24 hours of data for this sensor
             const currentTimestamp = Math.floor(Date.now() / 1000);
             const oneDayAgo = currentTimestamp - 86400;
-            
+
             // Filter data for this sensor and for the last 24 hours
             let sensorData = allSensorData.filter(reading => {
                 return reading.id === sensorId && reading.timestamp >= oneDayAgo;
             });
-            
+
             // Sort by timestamp
             sensorData.sort((a, b) => a.timestamp - b.timestamp);
-            
+
             // If there's no data, show a message
             if (sensorData.length === 0) {
                 document.getElementById(canvasId).style.display = 'none';
@@ -294,15 +307,15 @@
                 container.appendChild(noDataMsg);
                 return;
             }
-            
+
             // Prepare data points for chart
             const labels = sensorData.map(reading => {
                 const date = new Date(reading.timestamp * 1000);
                 return date.getHours() + ':' + (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
             });
-            
+
             const noiseLevels = sensorData.map(reading => reading.Lmax || reading.loudness || 0);
-            
+
             // Create the chart
             const ctx = document.getElementById(canvasId).getContext('2d');
             new Chart(ctx, {
@@ -395,34 +408,39 @@
                 .then(data => {
                     // Hide loading indicator
                     document.getElementById('loading').style.display = 'none';
-                    
+
                     console.log('Sensor data:', data);
-                    
+
                     // Store all data globally
                     allSensorData = data;
-                    
+
                     // Create a map to store the latest reading for each sensor
                     const latestSensorData = new Map();
-                    
+
                     // Process all data to find the latest reading for each sensor
                     data.forEach(sensor => {
                         const sensorId = sensor.id;
                         const timestamp = sensor.timestamp || 0;
-                        
+
                         // If we haven't seen this sensor before, or if this reading is newer
-                        if (!latestSensorData.has(sensorId) || 
+                        if (!latestSensorData.has(sensorId) ||
                             timestamp > latestSensorData.get(sensorId).timestamp) {
                             latestSensorData.set(sensorId, sensor);
                         }
                     });
-                    
-                    console.log('Latest sensor data:', Array.from(latestSensorData.values()));
-                    
+
+                    // !!!!!!!!!!!!!!!!!!!!!!!
+                    // remove from data sensor  where id = 'mjn-cz-noise-7'
+                    latestSensorData.delete('mjn-cz-noise-7');
+
+
+                    // console.log('Latest sensor data:', Array.from(latestSensorData.values()));
+
                     // Get current timestamp in seconds
                     const currentTimestamp = Math.floor(Date.now() / 1000);
                     // 24 hours in seconds = 86400
                     const oneDayInSeconds = 86400;
-                    
+
                     // Add circle markers only for the latest reading of each sensor
                     latestSensorData.forEach(sensor => {
                         // Check if sensor has location data, otherwise use predefined locations for known sensors
@@ -463,21 +481,24 @@
                                     longitude = 20.95057553981963;
                                     break;
                                 default:
-                                    // Random location in Warsaw for unknown sensors
                                     latitude = 52.2297 + (Math.random() * 0.05 - 0.025);
                                     longitude = 21.0122 + (Math.random() * 0.05 - 0.025);
+
+
                             }
                         }
-                        
+
                         // Ensure Lmax value exists, use loudness as fallback
                         const noiseLevel = sensor.Lmax || sensor.loudness || 60; // Default to 60 if no value
-                        
+
                         // Check if data is older than 24 hours
                         const isDataOld = (currentTimestamp - sensor.timestamp) > oneDayInSeconds;
-                        
+
                         // Use gray color if data is old, otherwise use the color based on noise level
                         const circleColor = isDataOld ? '#888888' : getColor(noiseLevel);
-                        
+
+
+
                         const circle = L.circleMarker([latitude, longitude], {
                             color: circleColor,
                             fillColor: circleColor,
@@ -485,7 +506,7 @@
                             weight: 1,
                             radius: getRadius(noiseLevel)
                         }).addTo(map);
-                        
+
                         // Add text label showing the noise level below the circle
                         const labelOffset = getRadius(noiseLevel) / 2 + 12; // Calculate offset based on circle radius
                         const textLabel = L.divIcon({
@@ -502,9 +523,9 @@
 
                         // Create a unique ID for the chart canvas
                         const chartId = `chart-${sensor.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
-                        
+
                         // Add popup with sensor info and chart
-                        const timestamp = sensor.timestamp ? 
+                        const timestamp = sensor.timestamp ?
                             new Date(sensor.timestamp * 1000).toLocaleString('pl-PL', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -512,12 +533,12 @@
                                 hour: '2-digit',
                                 minute: '2-digit',
                                 second: '2-digit'
-                            }).replace(/\./g, '-') : 
+                            }).replace(/\./g, '-') :
                             'Nieznany';
-                        
+
                         // Add information about data freshness to popup
-                        const dataAgeInfo = isDataOld ? 
-                            '<p style="color: #888;"><strong>Uwaga:</strong> Dane starsze niż 24 godziny</p>' : 
+                        const dataAgeInfo = isDataOld ?
+                            '<p style="color: #888;"><strong>Uwaga:</strong> Dane starsze niż 24 godziny</p>' :
                             '';
 
                         circle.bindPopup(`
@@ -538,16 +559,18 @@
                         };
 
                         // Create chart when popup is opened
-                        circle.on('popupopen', function() {
+                        circle.on('popupopen', function () {
                             setTimeout(() => {
                                 createNoiseChart(sensor.id, chartId);
                             }, 10);
                         });
 
                         // When circle is clicked, update the info panel with this sensor's info
-                        circle.on('click', function() {
+                        circle.on('click', function () {
                             info.update(sensorProps);
                         });
+
+
                     });
                 })
                 .catch(error => {
@@ -556,33 +579,34 @@
                     alert('Wystąpił problem podczas ładowania danych.');
                 });
         }
-        
+
         // Initial data load
         fetchData();
-        
+
         // Function to refresh data
         function refreshData() {
             // Show loading indicator
             document.getElementById('loading').style.display = 'block';
-            
+
             // Clear existing markers from map
             map.eachLayer(function (layer) {
-                if (layer instanceof L.CircleMarker || 
+                if (layer instanceof L.CircleMarker ||
                     (layer instanceof L.Marker && layer.options.icon && layer.options.icon.options.className === 'noise-label')) {
                     map.removeLayer(layer);
                 }
             });
-            
+
             // Fetch fresh data
             fetchData();
         }
-        
+
         // Set up automatic refresh every 3 minutes (180000 milliseconds)
         const refreshInterval = 180000; // 3 minutes
         setInterval(refreshData, refreshInterval);
-        
+
         // Add a timer logging to console to confirm the interval is working
-        console.log('Auto-refresh set up to run every 3 minutes.');
+        //console.log('Auto-refresh set up to run every 3 minutes.');
     </script>
 </body>
+
 </html>
