@@ -389,12 +389,36 @@
 
         // Create a mapping of sensor IDs to friendly location names
         const sensorNames = {
-            'mjn-u-cz1': 'Ursus, ul. Orląt Lwowskich',
-            'mjn-cz-noise-5': 'Mokotów, ul. Puławska',
-            'mjn-cz-noise-3': 'Śródmieście, ul. Emilii Plater',
-            'mjn-cz-noise-4': 'Wola, ul. Goleszowska',
-            'mjn-cz-noise-6': 'Ochota, ul. Kaliska',
-            'mjn-test-1': 'Wola, ul. D. Siedzikówny "Inki"'
+            'mjn-u-cz1': {
+                'adres': 'Ursus, ul. Orląt Lwowskich', 
+                'latitude': 52.19140609168865,
+                'longitude': 20.865002342426457
+            },
+            'mjn-cz-noise-5': {
+                'adres': 'Mokotów, ul. Puławska', 
+                'latitude': 52.18535469628882,                                  
+                'longitude': 21.02372229587361
+            },
+            'mjn-cz-noise-3': {
+                'adres': 'Śródmieście, ul. Emilii Plater',
+                'latitude': 52.232191391261274,
+                'longitude': 21.00288934332785
+            },
+            'mjn-cz-noise-4': {
+                'adres': 'Wola, ul. Goleszowska',
+                'latitude': 52.224962408624435,
+                'longitude': 20.938818834103355
+            },
+            'mjn-cz-noise-6': {
+                'adres': 'Ochota, ul. Kaliska',
+                'latitude': 52.217533714571736,
+                'longitude': 20.981149891932496
+            },
+            'mjn-cz-noise-7': {
+                'adres': 'Wola, Aleja Prymasa Tysiąclecia',
+                'latitude': 52.23177015793386,
+                'longitude': 20.955453755574585
+            }
         };
 
         function fetchData() {
@@ -431,7 +455,7 @@
 
                     // !!!!!!!!!!!!!!!!!!!!!!!
                     // remove from data sensor  where id = 'mjn-cz-noise-7'
-                    latestSensorData.delete('mjn-cz-noise-7');
+                    // latestSensorData.delete('mjn-cz-noise-7');
 
 
                     // console.log('Latest sensor data:', Array.from(latestSensorData.values()));
@@ -448,48 +472,18 @@
                         if (sensor.location && sensor.location.latitude && sensor.location.longitude) {
                             latitude = sensor.location.latitude;
                             longitude = sensor.location.longitude;
+                        } else if (sensorNames[sensor.id]) {
+                            // Use coordinates from the sensorNames object
+                            latitude = sensorNames[sensor.id].latitude;
+                            longitude = sensorNames[sensor.id].longitude;
                         } else {
-                            // Use specific coordinates for known sensors
-                            switch (sensor.id) {
-                                // Ursus Orl 48
-                                case 'mjn-u-cz1':
-                                    latitude = 52.19140609168865;
-                                    longitude = 20.865002342426457;
-                                    break;
-                                // Mokotów - Puławska
-                                case 'mjn-cz-noise-5':
-                                    latitude = 52.18535469628882;
-                                    longitude = 21.02372229587361;
-                                    break;
-                                // Śródmieście - Emilii Plater
-                                case 'mjn-cz-noise-3':
-                                    latitude = 52.232191391261274;
-                                    longitude = 21.00288934332785;
-                                    break;
-                                // Wola - Kazi
-                                case 'mjn-cz-noise-4':
-                                    latitude = 52.224962408624435;
-                                    longitude = 20.938818834103355;
-                                    break;
-                                // Ochota 
-                                case 'mjn-cz-noise-6':
-                                    latitude = 52.217533714571736;
-                                    longitude = 20.981149891932496;
-                                    break;
-                                case 'mjn-test-1':
-                                    latitude = 52.244779671170875;
-                                    longitude = 20.95057553981963;
-                                    break;
-                                default:
-                                    latitude = 52.2297 + (Math.random() * 0.05 - 0.025);
-                                    longitude = 21.0122 + (Math.random() * 0.05 - 0.025);
-
-
-                            }
+                            // Use default coordinates for unknown sensors
+                            latitude = 0;
+                            longitude = 0;
                         }
 
                         // Ensure Lmax value exists, use loudness as fallback
-                        const noiseLevel = sensor.Lmax || sensor.loudness || 60; // Default to 60 if no value
+                        const noiseLevel = sensor.Lmax || sensor.loudness; // Default to 60 if no value
 
                         // Check if data is older than 24 hours
                         const isDataOld = (currentTimestamp - sensor.timestamp) > oneDayInSeconds;
@@ -542,7 +536,7 @@
                             '';
 
                         circle.bindPopup(`
-                            <h3>${sensorNames[sensor.id] || sensor.id}</h3>
+                            <h3>${sensorNames[sensor.id] ? sensorNames[sensor.id].adres : sensor.id}</h3>
                             <p><strong>Poziom hałasu:</strong> <span style="font-weight: 700; font-size: 1.3em;">${noiseLevel} dB</span></p>
                             <p><strong>Czas pomiaru:</strong> ${timestamp}</p>
                             ${dataAgeInfo}
