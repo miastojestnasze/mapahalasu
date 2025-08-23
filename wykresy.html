@@ -372,16 +372,16 @@
                 'latitude': 52.19140609168865,
                 'longitude': 20.865002342426457
             },
-            'mjn-cz-noise-2': {
-                'adres': 'Wola, ul. Łucka',
-                'latitude': 52.23311543627833,                                  
-                'longitude': 20.99141499475493
-            },
-            'mjn-cz-noise-5': {
-                'adres': 'Mokotów, ul. Puławska', 
-                'latitude': 52.18535469628882,                                  
-                'longitude': 21.02372229587361
-            },
+            // 'mjn-cz-noise-2': {
+            //     'adres': 'Wola, ul. Łucka',
+            //     'latitude': 52.23311543627833,                                  
+            //     'longitude': 20.99141499475493
+            // },
+            // 'mjn-cz-noise-5': {
+            //     'adres': 'Mokotów, ul. Puławska', 
+            //     'latitude': 52.18535469628882,                                  
+            //     'longitude': 21.02372229587361
+            // },
             'mjn-cz-noise-3': {
                 'adres': 'Śródmieście, ul. Emilii Plater',
                 'latitude': 52.232191391261274,
@@ -397,11 +397,11 @@
                 'latitude': 52.217533714571736,
                 'longitude': 20.981149891932496
             },
-            'mjn-cz-noise-7': {
-                'adres': 'Wola, Aleja Prymasa Tysiąclecia',
-                'latitude': 52.23177015793386,
-                'longitude': 20.955453755574585
-            }
+            // 'mjn-cz-noise-7': {
+            //     'adres': 'Wola, Aleja Prymasa Tysiąclecia',
+            //     'latitude': 52.23177015793386,
+            //     'longitude': 20.955453755574585
+            // }
         };
 
         // Color palette for different sensors
@@ -794,6 +794,23 @@
             chartSvg = svg;
         }
 
+        // Filter grouped data to include only sensors that are defined in sensorNames
+        function filterGroupedDataByKnownSensors(groupedData) {
+            const filtered = {};
+
+            Object.keys(groupedData).forEach(sensorId => {
+                // Only include sensors that are present in sensorNames and have data
+                if (Object.prototype.hasOwnProperty.call(sensorNames, sensorId) && groupedData[sensorId] && groupedData[sensorId].length > 0) {
+                    filtered[sensorId] = groupedData[sensorId];
+                } else {
+                    // Unknown sensors are ignored
+                    console.warn('Ignoring unknown or empty sensor id:', sensorId);
+                }
+            });
+
+            return filtered;
+        }
+
         // Main function to load and display data
         function loadData() {
             document.getElementById('loading').style.display = 'block';
@@ -809,8 +826,11 @@
                     // Remove sensor mjn-cz-noise-7 if needed (uncomment the line below)
                     // delete groupedData['mjn-cz-noise-7'];
 
-                    displayStats(groupedData);
-                    createCharts(groupedData);
+                    // Only keep sensors that are declared in sensorNames
+                    const knownGroupedData = filterGroupedDataByKnownSensors(groupedData);
+
+                    displayStats(knownGroupedData);
+                    createCharts(knownGroupedData);
 
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('chartsGrid').style.display = 'grid';
