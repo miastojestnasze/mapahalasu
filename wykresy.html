@@ -331,6 +331,7 @@
                 </select>
                 
                 <button id="refreshButton" class="refresh-button">Odśwież dane</button>
+                <button id="uncheckAllButton" class="refresh-button" style="background:#e9ecef;color:#333;margin-left:8px;">Odznacz wszystkie</button>
             </div>
             
             <div class="sensor-controls">
@@ -557,6 +558,21 @@
                 activeDatasets.delete(sensorId);
             }
             
+            // Update chart visibility
+            updateChartVisibility();
+        }
+
+        // Uncheck all sensors (clear selection)
+        function uncheckAllSensors() {
+            // Clear active datasets
+            activeDatasets.clear();
+
+            // Uncheck all checkboxes in the UI
+            availableSensors.forEach(sensorId => {
+                const checkbox = document.getElementById(`sensor-${sensorId}`);
+                if (checkbox) checkbox.checked = false;
+            });
+
             // Update chart visibility
             updateChartVisibility();
         }
@@ -845,6 +861,7 @@
         // Event listeners
         document.getElementById('timeRange').addEventListener('change', loadData);
         document.getElementById('refreshButton').addEventListener('click', loadData);
+        document.getElementById('uncheckAllButton').addEventListener('click', uncheckAllSensors);
 
         // Initial load
         loadData();
