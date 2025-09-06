@@ -95,58 +95,7 @@
             display: none;
         }
 
-        /* Style for welcome box */
-        .welcome-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
 
-        .welcome-box {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            max-width: 500px;
-            width: 80%;
-        }
-
-        .welcome-box h2 {
-            color: #000000;
-            /* Changed from #4CAF50 to black */
-            margin-top: 0;
-        }
-
-        .welcome-box p {
-            font-size: 18px;
-            line-height: 1.6;
-        }
-
-        .close-button {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 30px;
-            background-color: #FDF312;
-            color: #333;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .close-button:hover {
-            background-color: #e6dc10;
-        }
 
         /* Styling for the chart in popup */
         .popup-chart-container {
@@ -172,18 +121,7 @@
 </head>
 
 <body>
-    <!-- Welcome Box -->
-    <div id="welcomeOverlay" class="welcome-overlay">
-        <div class="welcome-box">
-            <h2>Mapa Hałasu MJN</h2>
-            <div style="text-align: center;">
-                <img src="syrenka_halas.png" alt="Syrenka Hałasu"
-                    style="max-width: 150px; margin: 15px auto; display: block;">
-            </div>
-            <p>Witamy na edukacyjnej stronie poświęconej hałasowi.</p>
-            <button id="closeWelcomeButton" class="close-button">Zamknij</button>
-        </div>
-    </div>
+
 
     <!-- Navigation Bar -->
     <div class="navbar">
@@ -200,13 +138,7 @@
     <div id="loading" class="loading-indicator">Ładowanie danych...</div>
 
     <script>
-        // Welcome box handling - close only when clicking the button
-        const welcomeOverlay = document.getElementById('welcomeOverlay');
-        const closeButton = document.getElementById('closeWelcomeButton');
 
-        closeButton.addEventListener('click', function () {
-            welcomeOverlay.style.display = 'none';
-        });
 
         // Initialize the map centered on Warsaw
         const map = L.map('map').setView([52.229676, 21.012229], 12);
@@ -384,8 +316,8 @@
         }
 
         // Fetch sensor data from the server directly
-        const apiUrl = new URL('https://vps-76e4aba0.vps.ovh.net/samples');
-        apiUrl.searchParams.append('offset', '503300');
+        const apiUrl = new URL('https://radawarszawy.pl/samples');
+        apiUrl.searchParams.append('offset', '0');
         apiUrl.searchParams.append('limit', '30000000');
 
         // Create a mapping of sensor IDs to friendly location names
