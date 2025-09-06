@@ -418,8 +418,8 @@
 
         // Fetch sensor data from the server
         function fetchData() {
-            const apiUrl = new URL('https://vps-76e4aba0.vps.ovh.net/samples');
-            apiUrl.searchParams.append('offset', '503300');
+            const apiUrl = new URL('https://radawarszawy.pl/samples');
+            apiUrl.searchParams.append('offset', '0');
             apiUrl.searchParams.append('limit', '30000000');
 
             return fetch(apiUrl.toString())
