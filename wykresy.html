@@ -41,6 +41,12 @@
                     <option value="720">Ostatni miesiąc</option>
                 </select>
                 
+                <label for="metricType" style="margin-left: 20px;">Metryka:</label>
+                <select id="metricType">
+                    <option value="Lmax">Lmax (poziom maksymalny)</option>
+                    <option value="Leq">Leq (poziom równoważny)</option>
+                </select>
+                
                 <button id="refreshButton" class="refresh-button">Odśwież dane</button>
                 <button id="uncheckAllButton" class="refresh-button" style="background:#e9ecef;color:#333;margin-left:8px;">Odznacz wszystkie</button>
             </div>
@@ -142,7 +148,14 @@
         function calculateStats(data) {
             if (data.length === 0) return {};
 
-            const noiseLevels = data.map(reading => reading.Lmax || reading.loudness || 0);
+            const metricType = document.getElementById('metricType').value;
+            const noiseLevels = data.map(reading => {
+                if (metricType === 'Leq') {
+                    return reading.Leq || 0;
+                } else {
+                    return reading.Lmax || reading.loudness || 0;
+                }
+            });
             const validLevels = noiseLevels.filter(level => level > 0);
 
             if (validLevels.length === 0) return {};
@@ -308,6 +321,7 @@
             const margin = { top: 80, right: 100, bottom: 60, left: 60 };
             const width = container.clientWidth - margin.left - margin.right;
             const height = 500 - margin.top - margin.bottom;
+            const metricType = document.getElementById('metricType').value;
 
             const chartGroup = svg
                 .attr('width', width + margin.left + margin.right)
@@ -326,12 +340,21 @@
                 const sensorName = sensorNames[sensorId] ? sensorNames[sensorId].adres : sensorId;
                 const color = sensorColors[colorIndex % sensorColors.length];
 
-                const dataPoints = sensorData.map(reading => ({
-                    date: new Date(reading.timestamp * 1000),
-                    value: reading.Lmax || reading.loudness || 0,
-                    sensor: sensorId,
-                    sensorName: sensorName
-                }));
+                const dataPoints = sensorData.map(reading => {
+                    let value;
+                    if (metricType === 'Leq') {
+                        value = reading.Leq || 0;
+                    } else {
+                        value = reading.Lmax || reading.loudness || 0;
+                    }
+                    
+                    return {
+                        date: new Date(reading.timestamp * 1000),
+                        value: value,
+                        sensor: sensorId,
+                        sensorName: sensorName
+                    };
+                });
 
                 datasets.push({
                     id: sensorId,
@@ -371,6 +394,8 @@
                 .call(yAxis);
 
             // Add axis labels
+            const yAxisLabel = metricType === 'Leq' ? 'Poziom równoważny Leq (dB)' : 'Poziom maksymalny Lmax (dB)';
+            
             chartGroup.append('text')
                 .attr('class', 'axis-label')
                 .attr('transform', 'rotate(-90)')
@@ -378,7 +403,7 @@
                 .attr('x', 0 - (height / 2))
                 .attr('dy', '1em')
                 .style('text-anchor', 'middle')
-                .text('Poziom hałasu (dB)');
+                .text(yAxisLabel);
 
             chartGroup.append('text')
                 .attr('class', 'axis-label')
@@ -513,6 +538,7 @@
 
         // Event listeners
         document.getElementById('timeRange').addEventListener('change', loadData);
+        document.getElementById('metricType').addEventListener('change', loadData);
         document.getElementById('refreshButton').addEventListener('click', loadData);
         document.getElementById('uncheckAllButton').addEventListener('click', uncheckAllSensors);
 
