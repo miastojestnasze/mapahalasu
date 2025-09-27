@@ -6,84 +6,9 @@
     <title>O mapie hałasu MJN</title>
     <!-- Add Figtree font -->
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Figtree', sans-serif;
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        .navbar {
-            background-color: #FDF312;
-            overflow: hidden;
-            padding: 0;
-            z-index: 1000;
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-        .navbar a {
-            float: left;
-            color: #333;
-            text-align: center;
-            padding: 14px 16px;
-            text-decoration: none;
-            font-size: 17px;
-            font-family: 'Figtree', sans-serif;
-            font-weight: 600;
-            height: 100%;
-            box-sizing: border-box;
-        }
-        .navbar a:hover {
-            background-color: #e6dc10;
-            color: black;
-        }
-        .navbar a.active {
-            background-color: #e6dc10;
-            color: black;
-        }
-        .navbar-logo {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            height: 100%;
-            padding: 0 15px;
-        }
-        .navbar-logo img {
-            height: 30px;
-            display: block;
-        }
-        .content {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            flex-grow: 1;
-            text-align: center;
-        }
-        h1 {
-            color: #000000;
-            margin-bottom: 30px;
-        }
-        p {
-            margin-bottom: 20px;
-            font-size: 1.1em;
-            text-align: justify;
-        }
-        .highlight {
-            font-weight: bold;
-            color: #a18ffa;
-        }
-        .footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            margin-top: auto;
-        }
-    </style>
+    <!-- Common styles -->
+    <link rel="stylesheet" href="styles.css">
+
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -92,11 +17,14 @@
         <a href="omapie.html" class="active">O mapie</a>
         <a href="wykresy.html">Wykresy</a>
         <div class="navbar-logo">
-            <img src="logo.png" alt="Logo MJN">
+            <a href="https://miastojestnasze.org/" target="_blank" rel="noopener noreferrer">
+                <img src="logo.png" alt="Logo MJN">
+            </a>
         </div>
     </div>
     
-    <div class="content">
+    <div class="about-layout">
+        <div class="content">
         <h1>O projekcie mapy hałasu w Warszawie</h1>
         
         <div style="text-align: center; margin: 20px 0;">
@@ -138,8 +66,9 @@
         </p>
     </div>
     
-    <div class="footer">
-        &copy; 2025 Miasto Jest Nasze | Projekt mapy hałasu
+        <div class="footer">
+            &copy; 2025 Miasto Jest Nasze | Projekt mapy hałasu
+        </div>
     </div>
 </body>
 </html>
