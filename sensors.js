@@ -35,4 +35,9 @@ const sensorNames = {
         'latitude': 52.217533714571736,
         'longitude': 20.981149891932496
     },
+    'mjn-cz-noise-10': {
+        'adres': 'Żoliborz, ul. Gwiaździsta',
+        'latitude': 52.27293965600434,
+        'longitude': 20.99414155658846
+    }
 };
