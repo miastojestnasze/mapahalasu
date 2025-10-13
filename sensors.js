@@ -25,14 +25,14 @@ const sensorNames = {
         'latitude': 52.17656404367752,                                 
         'longitude': 20.99247968611798
     },
-    'mjn-cz-noise-6': {
-        'adres': 'Ochota, ul. Kaliska',
-        'latitude': 52.217533714571736,
-        'longitude': 20.981149891932496
-    },
     'mjn-cz-noise-7': {
         'adres': 'Wola, Aleja Prymasa Tysiąclecia',
         'latitude': 52.23177015793386,
         'longitude': 20.955453755574585
-    }
+    },
+    'mjn-cz-noise-9': {
+        'adres': 'Ochota, ul. Kaliska',
+        'latitude': 52.217533714571736,
+        'longitude': 20.981149891932496
+    },
 };
