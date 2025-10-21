@@ -39,6 +39,8 @@
 
     <script>
 
+        // Global variables
+        let sensorMarkers = []; // Store references to all sensor markers
 
         // Initialize the map centered on Warsaw
         const map = L.map('map').setView([52.229676, 21.012229], 12);
@@ -49,19 +51,19 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Function to determine circle color based on Lmax value
-        function getColor(lmax) {
-            return lmax > 65 ? '#ff0000' :
-                lmax > 60 ? '#ff2600' :
-                    lmax > 55 ? '#FF552B' :
-                        lmax > 50 ? '#DF8A09' :
-                            lmax > 45 ? '#BF9E00' :
+        // Function to determine circle color based on noise value
+        function getColor(noiseValue) {
+            return noiseValue > 65 ? '#ff0000' :
+                noiseValue > 60 ? '#ff2600' :
+                    noiseValue > 55 ? '#FF552B' :
+                        noiseValue > 50 ? '#DF8A09' :
+                            noiseValue > 45 ? '#BF9E00' :
                                 '#9F9F00';
         }
 
-        // Function to determine circle radius based on Lmax value
-        function getRadius(lmax) {
-            return lmax * 0.5; // Reduced from 0.8 to 0.5 to make circles smaller
+        // Function to determine circle radius based on noise value
+        function getRadius(noiseValue) {
+            return noiseValue * 0.5; // Reduced from 0.8 to 0.5 to make circles smaller
         }
 
         // Create info panel
@@ -115,7 +117,7 @@
         let allSensorData = [];
 
         // Function to create a chart showing noise level changes over time
-        function createNoiseChart(sensorId, canvasId) {
+        function createNoiseChart(sensorId, canvasId, metricType = 'Lmax') {
             // Get the last 24 hours of data for this sensor
             const currentTimestamp = Math.floor(Date.now() / 1000);
             const oneDayAgo = currentTimestamp - 86400;
@@ -147,7 +149,13 @@
                 return date.getHours() + ':' + (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
             });
 
-            const noiseLevels = sensorData.map(reading => reading.Lmax || reading.loudness || 0);
+            const noiseLevels = sensorData.map(reading => {
+                if (metricType === 'Leq') {
+                    return reading.Leq || 0;
+                } else {
+                    return reading.Lmax || reading.loudness || 0;
+                }
+            });
 
             // Create the chart
             const ctx = document.getElementById(canvasId).getContext('2d');
@@ -156,7 +164,7 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Poziom hałasu (dB)',
+                        label: `Poziom hałasu ${metricType} (dB)`,
                         data: noiseLevels,
                         backgroundColor: 'rgba(161, 143, 250, 0.2)', // Changed to #a18ffa with opacity
                         borderColor: '#a18ffa', // Changed to #a18ffa
@@ -196,7 +204,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Poziom hałasu w ostatnich 24 godzinach'
+                            text: `Poziom hałasu ${metricType} w ostatnich 24 godzinach`
                         },
                         tooltip: {
                             mode: 'index',
@@ -215,12 +223,132 @@
             });
         }
 
+        // Function to create a combined chart with both Lmax and Leq lines
+        function createCombinedNoiseChart(sensorId, canvasId) {
+            // Get the last 24 hours of data for this sensor
+            const currentTimestamp = Math.floor(Date.now() / 1000);
+            const oneDayAgo = currentTimestamp - 86400;
+
+            // Filter data for this sensor and for the last 24 hours
+            let sensorData = allSensorData.filter(reading => {
+                return reading.id === sensorId && reading.timestamp >= oneDayAgo;
+            });
+
+            // Sort by timestamp
+            sensorData.sort((a, b) => a.timestamp - b.timestamp);
+
+            // If there's no data, show a message
+            if (sensorData.length === 0) {
+                document.getElementById(canvasId).style.display = 'none';
+                const container = document.getElementById(canvasId).parentNode;
+                const noDataMsg = document.createElement('p');
+                noDataMsg.textContent = 'Brak danych z ostatnich 24 godzin.';
+                noDataMsg.style.textAlign = 'center';
+                noDataMsg.style.fontStyle = 'italic';
+                noDataMsg.style.color = '#888';
+                container.appendChild(noDataMsg);
+                return;
+            }
+
+            // Prepare data points for chart
+            const labels = sensorData.map(reading => {
+                const date = new Date(reading.timestamp * 1000);
+                return date.getHours() + ':' + (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+            });
+
+            const lmaxLevels = sensorData.map(reading => reading.Lmax || reading.loudness || 0);
+            const leqLevels = sensorData.map(reading => reading.Leq || 0);
+
+            // Create the chart
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Lmax (dB)',
+                            data: lmaxLevels,
+                            backgroundColor: 'rgba(255, 107, 107, 0.2)',
+                            borderColor: '#ff6b6b',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            pointHoverBackgroundColor: '#ff6b6b',
+                            pointHitRadius: 8
+                        },
+                        {
+                            label: 'Leq (dB)',
+                            data: leqLevels,
+                            backgroundColor: 'rgba(161, 143, 250, 0.2)',
+                            borderColor: '#a18ffa',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            pointHoverBackgroundColor: '#a18ffa',
+                            pointHitRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: Math.max(0, Math.min(...lmaxLevels.concat(leqLevels)) - 5),
+                            title: {
+                                display: true,
+                                text: 'dB'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Godzina'
+                            },
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
         // Fetch sensor data from the server directly
         const apiUrl = new URL('https://radawarszawy.pl/samples');
         apiUrl.searchParams.append('offset', '0');
         apiUrl.searchParams.append('limit', '30000000');
 
         function fetchData() {
+            // Clear sensor markers array
+            sensorMarkers = [];
+            
             fetch(apiUrl.toString())
                 .then(response => {
                     if (!response.ok) {
@@ -281,43 +409,68 @@
                             longitude = 0;
                         }
 
-                        // Ensure Lmax value exists, use loudness as fallback
-                        const noiseLevel = sensor.Lmax || sensor.loudness; // Default to 60 if no value
+                        // Get noise level based on current metric
+                        const lmaxValue = sensor.Lmax || sensor.loudness || 0;
+                        const leqValue = sensor.Leq || 0;
 
                         // Check if data is older than 24 hours
                         const isDataOld = (currentTimestamp - sensor.timestamp) > oneDayInSeconds;
 
-                        // Use gray color if data is old, otherwise use the color based on noise level
-                        const circleColor = isDataOld ? '#888888' : getColor(noiseLevel);
-
-
-
-                        const circle = L.circleMarker([latitude, longitude], {
-                            color: circleColor,
-                            fillColor: circleColor,
-                            fillOpacity: 0.8,
-                            weight: 1,
-                            radius: getRadius(noiseLevel)
+                        // Create Lmax circle first (so it's underneath)
+                        const lmaxColor = isDataOld ? '#888888' : getColor(lmaxValue);
+                        const lmaxCircle = L.circleMarker([latitude, longitude], {
+                            color: '#000000', // Black border
+                            fillColor: lmaxColor,
+                            fillOpacity: 1.0,
+                            weight: 0.5, // Very thin black border
+                            radius: getRadius(lmaxValue)
                         }).addTo(map);
 
-                        // Add text label showing the noise level below the circle
-                        const labelOffset = getRadius(noiseLevel) / 2 + 12; // Calculate offset based on circle radius
-                        const textLabel = L.divIcon({
-                            html: `<div style="text-align: center; font-weight: bold; color: #333; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">${Math.round(noiseLevel)} dB</div>`,
+                        // Create Leq circle second (so it's on top)
+                        const leqColor = isDataOld ? '#888888' : getColor(leqValue);
+                        const leqCircle = L.circleMarker([latitude, longitude], {
+                            color: '#000000', // Black border
+                            fillColor: leqColor,
+                            fillOpacity: 1.0,
+                            weight: 0.5, // Very thin black border
+                            radius: getRadius(leqValue)
+                        }).addTo(map);
+
+                        // Add text label for Leq (above the circles)
+                        const leqLabelOffset = Math.max(getRadius(leqValue), getRadius(lmaxValue)) + 10; // Much higher above
+                        const leqTextLabel = L.divIcon({
+                            html: `<div style="text-align: center; font-weight: bold; color: #333; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">${Math.round(leqValue)} dB Leq</div>`,
                             className: 'noise-label',
-                            iconSize: [60, 20],
-                            iconAnchor: [30, -labelOffset]
+                            iconSize: [80, 20],
+                            iconAnchor: [40, leqLabelOffset] // Positive value to position above
                         });
 
-                        L.marker([latitude, longitude], {
-                            icon: textLabel,
-                            interactive: false // Make the text non-interactive so it doesn't interfere with circle clicks
+                        const leqTextMarker = L.marker([latitude, longitude], {
+                            icon: leqTextLabel,
+                            interactive: false
                         }).addTo(map);
 
-                        // Create a unique ID for the chart canvas
+                        // Add text label for Lmax (below the circles)
+                        const lmaxLabelOffset = -Math.max(getRadius(leqValue), getRadius(lmaxValue)) / 2 - 5; // Below the circles
+                        const lmaxTextLabel = L.divIcon({
+                            html: `<div style="text-align: center; font-weight: bold; color: #333; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">${Math.round(lmaxValue)} dB Lmax</div>`,
+                            className: 'noise-label',
+                            iconSize: [80, 20],
+                            iconAnchor: [40, lmaxLabelOffset]
+                        });
+
+                        const lmaxTextMarker = L.marker([latitude, longitude], {
+                            icon: lmaxTextLabel,
+                            interactive: false
+                        }).addTo(map);
+
+                        // Store references to all markers
+                        sensorMarkers.push(leqCircle, lmaxCircle, leqTextMarker, lmaxTextMarker);
+
+                        // Create unique ID for the combined chart canvas
                         const chartId = `chart-${sensor.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
-                        // Add popup with sensor info and chart
+                        // Add popup with sensor info and charts
                         const timestamp = sensor.timestamp ?
                             new Date(sensor.timestamp * 1000).toLocaleString('pl-PL', {
                                 day: '2-digit',
@@ -334,32 +487,50 @@
                             '<p style="color: #888;"><strong>Uwaga:</strong> Dane starsze niż 24 godziny</p>' :
                             '';
 
-                        circle.bindPopup(`
+                        const popupContent = `
                             <h3>${sensorNames[sensor.id] ? sensorNames[sensor.id].adres : sensor.id}</h3>
-                            <p><strong>Poziom hałasu Lmax:</strong> <span style="font-weight: 700; font-size: 1.3em;">${noiseLevel} dB</span></p>
-                            <p><strong>Czas pomiaru:</strong> ${timestamp}</p>
+                            <p> <strong>Lmax:</strong> <span style="font-weight: 700; font-size: 1.3em;">${lmaxValue} dB</span>, <strong>Leq:</strong> <span style="font-weight: 700; font-size: 1.3em;">${leqValue} dB</span></p>
+                            <p><strong>Ostatni pomiar:</strong> ${timestamp}</p>
                             ${dataAgeInfo}
-                            <div class="popup-chart-container">
-                                <canvas id="${chartId}"></canvas>
+                            <div style="margin-top: 15px;">
+                                <h4 style="margin: 0 0 10px 0; text-align: center;">Poziomy hałasu w ostatnich 24 godzinach</h4>
+                                <div class="popup-chart-container" style="width: 300px; height: 200px;">
+                                    <canvas id="${chartId}"></canvas>
+                                </div>
                             </div>
-                        `);
+                        `;
 
-                        // Create a sensor props object for the info panel
-                        const sensorProps = {
-                            id: sensor.id,
-                            Lmax: noiseLevel,
-                            timestamp: sensor.timestamp || 0
-                        };
+                        // Add popup to both circles
+                        leqCircle.bindPopup(popupContent);
+                        lmaxCircle.bindPopup(popupContent);
 
-                        // Create chart when popup is opened
-                        circle.on('popupopen', function () {
+                        // Create charts when popup is opened (for both circles)
+                        leqCircle.on('popupopen', function () {
                             setTimeout(() => {
-                                createNoiseChart(sensor.id, chartId);
+                                createCombinedNoiseChart(sensor.id, chartId);
                             }, 10);
                         });
 
-                        // When circle is clicked, update the info panel with this sensor's info
-                        circle.on('click', function () {
+                        lmaxCircle.on('popupopen', function () {
+                            setTimeout(() => {
+                                createCombinedNoiseChart(sensor.id, chartId);
+                            }, 10);
+                        });
+
+                        // Create sensor props objects for the info panel
+                        const sensorProps = {
+                            id: sensor.id,
+                            Lmax: lmaxValue,
+                            Leq: leqValue,
+                            timestamp: sensor.timestamp || 0
+                        };
+
+                        // When circles are clicked, update the info panel with this sensor's info
+                        leqCircle.on('click', function () {
+                            info.update(sensorProps);
+                        });
+
+                        lmaxCircle.on('click', function () {
                             info.update(sensorProps);
                         });
 
@@ -381,13 +552,9 @@
             // Show loading indicator
             document.getElementById('loading').style.display = 'block';
 
-            // Clear existing markers from map
-            map.eachLayer(function (layer) {
-                if (layer instanceof L.CircleMarker ||
-                    (layer instanceof L.Marker && layer.options.icon && layer.options.icon.options.className === 'noise-label')) {
-                    map.removeLayer(layer);
-                }
-            });
+            // Clear existing markers from map and stored references
+            sensorMarkers.forEach(marker => map.removeLayer(marker));
+            sensorMarkers = [];
 
             // Fetch fresh data
             fetchData();
