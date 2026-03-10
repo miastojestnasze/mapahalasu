@@ -1,0 +1,39 @@
+LISTA REKWIZYTÓW - ANALIZA SCENARIUSZA
+========================================
+
+Data: 9 listopada 2025
+Plik źródłowy: scenariusz.txt
+Analizowane sceny: Scena 1
+
+REKWIZYTY POTRZEBNE DO REALIZACJI:
+---------------------------------
+
+1. KRZESŁO
+   - Typ: krzesło standardowe
+   - Opis: Element, za który łapie się postać
+   - Uwagi: Musi być stabilne, łatwe do złapania
+   - Scena: Scena 1
+
+2. WAZON
+   - Typ: wazon dekoracyjny
+   - Opis: Obiekt rzucany o drzwi przez postać
+   - Uwagi: Powinien być wykonany z materiału bezpiecznego dla aktorów (np. cukier, żywica, plastik imitujący ceramikę)
+   - Scena: Scena 1
+
+3. DRZWI
+   - Typ: drzwi wewnętrzne lub dekoracja drzwi
+   - Opis: Element scenografii, o który rzucany jest wazon
+   - Uwagi: Muszą wytrzymać uderzenie wazonu, ewentualnie przygotować kilka egzemplarzy na próby
+   - Scena: Scena 1
+
+PODSUMOWANIE:
+------------
+Łącznie potrzebne są 3 główne rekwizyty do realizacji Sceny 1.
+Wszystkie elementy muszą być bezpieczne dla aktorów i wytrzymałe na wielokrotne użycie podczas prób.
+
+UWAGI SCENOGRAFICZNE:
+-------------------
+- Wazon powinien być przygotowany w kilku egzemplarzach na wypadek zniszczenia
+- Krzesło musi być odpowiednio umieszczone w przestrzeni sceny
+- Drzwi mogą być elementem stałej scenografii lub ruchomą dekoracją
+- Wszystkie rekwizyty powinny pasować stylistycznie do koncepcji scenograficznej całego spektaklu

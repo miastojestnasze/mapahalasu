@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 
 <head>
     <meta charset="UTF-8">
@@ -91,7 +91,6 @@
         legend.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'legend');
             const grades = [0, 45, 50, 55, 60, 65];
-            const labels = [];
 
             div.innerHTML = '<h4>Poziom Hałasu (dB)</h4>';
 
@@ -341,7 +340,7 @@
         }
 
         // Fetch sensor data from the server directly
-        const apiUrl = new URL('https://radawarszawy.pl/samples');
+        const apiUrl = new URL('https://vps-76e4aba0.vps.ovh.net/samples');
         apiUrl.searchParams.append('offset', '0');
         apiUrl.searchParams.append('limit', '30000000');
 
@@ -360,8 +359,6 @@
                     // Hide loading indicator
                     document.getElementById('loading').style.display = 'none';
 
-                    console.log('Sensor data:', data);
-
                     // Store all data globally
                     allSensorData = data;
 
@@ -379,13 +376,6 @@
                             latestSensorData.set(sensorId, sensor);
                         }
                     });
-
-                    // !!!!!!!!!!!!!!!!!!!!!!!
-                    // remove from data sensor  where id = 'mjn-cz-noise-7'
-                    // latestSensorData.delete('mjn-cz-noise-7');
-
-
-                    // console.log('Latest sensor data:', Array.from(latestSensorData.values()));
 
                     // Get current timestamp in seconds
                     const currentTimestamp = Math.floor(Date.now() / 1000);
@@ -564,8 +554,6 @@
         const refreshInterval = 180000; // 3 minutes
         setInterval(refreshData, refreshInterval);
 
-        // Add a timer logging to console to confirm the interval is working
-        //console.log('Auto-refresh set up to run every 3 minutes.');
     </script>
 </body>
 

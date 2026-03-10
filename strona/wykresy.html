@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 
 <head>
     <meta charset="UTF-8">
@@ -96,7 +96,7 @@
 
         // Fetch sensor data from the server
         function fetchData() {
-            const apiUrl = new URL('https://radawarszawy.pl/samples');
+            const apiUrl = new URL('https://vps-76e4aba0.vps.ovh.net/samples');
             apiUrl.searchParams.append('offset', '0');
             apiUrl.searchParams.append('limit', '30000000');
 
@@ -516,9 +516,6 @@
                     const timeRange = parseInt(document.getElementById('timeRange').value);
                     const filteredData = filterDataByTimeRange(data, timeRange);
                     const groupedData = groupDataBySensor(filteredData);
-
-                    // Remove sensor mjn-cz-noise-7 if needed (uncomment the line below)
-                    // delete groupedData['mjn-cz-noise-7'];
 
                     // Only keep sensors that are declared in sensorNames
                     const knownGroupedData = filterGroupedDataByKnownSensors(groupedData);
