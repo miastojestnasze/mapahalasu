@@ -97,7 +97,8 @@ body {
     opacity: 0.7;
 }
 
-.loading-indicator {
+/* Loading indicator on map page */
+.map-layout .loading-indicator {
     position: absolute;
     top: 10px;
     left: 50%;
@@ -175,7 +176,8 @@ body {
 }
 
 
-.loading-indicator {
+/* Loading indicator on charts page */
+.charts-layout .loading-indicator {
     text-align: center;
     padding: 50px;
     background: white;
@@ -323,12 +325,12 @@ body {
     text-align: center;
 }
 
-h1 {
+.about-layout h1 {
     color: #000000;
     margin-bottom: 30px;
 }
 
-p {
+.about-layout p {
     margin-bottom: 20px;
     font-size: 1.1em;
     text-align: justify;
