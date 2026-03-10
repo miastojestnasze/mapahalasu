@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interaktywna mapa hałasu w Warszawie. Dane z czujników w czasie rzeczywistym - poziomy Lmax i Leq w decybelach. Projekt Miasto Jest Nasze.">
+    <link rel="icon" href="favicon.ico">
     <title>Mapa Hałasu MJN</title>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
@@ -78,7 +80,7 @@
         info.update = function (props) {
             this._div.innerHTML = `
                 <h4>Mapa Hałasu MJN</h4>
-                <img src="syrenka_halas.png" alt="Syrenka Hałasu" style="max-width: 100%; max-height: 100px; margin-top: 10px;">
+                <img src="syrenka_halas.png" alt="Syrenka Hałasu">
             `;
             // Removed the hover text - now only showing the title and image
         };

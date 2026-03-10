@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Wykresy poziomu hałasu w Warszawie. Porównanie danych z czujników w czasie - Lmax i Leq. Projekt Miasto Jest Nasze.">
+    <link rel="icon" href="favicon.ico">
     <title>Wykresy Hałasu MJN</title>
     <!-- Chart.js with time scale adapter -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -42,14 +44,14 @@
                     <option value="720">Ostatni miesiąc</option>
                 </select>
                 
-                <label for="metricType" style="margin-left: 20px;">Metryka:</label>
+                <label for="metricType" class="metric-label">Metryka:</label>
                 <select id="metricType">
                     <option value="Lmax">Lmax (poziom maksymalny)</option>
                     <option value="Leq">Leq (poziom równoważny)</option>
                 </select>
                 
                 <button id="refreshButton" class="refresh-button">Odśwież dane</button>
-                <button id="uncheckAllButton" class="refresh-button" style="background:#e9ecef;color:#333;margin-left:8px;">Odznacz wszystkie</button>
+                <button id="uncheckAllButton" class="refresh-button secondary">Odznacz wszystkie</button>
             </div>
             
             <div class="sensor-controls">
@@ -252,7 +254,7 @@
             const chartContainer = document.createElement('div');
             chartContainer.className = 'chart-container';
             chartContainer.innerHTML = `
-                <div id="chart-container" style="position: relative; height: 500px;">
+                <div id="chart-container" class="chart-container">
                     <canvas id="combined-chart"></canvas>
                 </div>
             `;
