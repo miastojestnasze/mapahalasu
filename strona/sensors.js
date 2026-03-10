@@ -1,3 +1,13 @@
+// API configuration
+const API_URL = 'https://vps-76e4aba0.vps.ovh.net/samples';
+
+function buildApiUrl(params = {}) {
+    const url = new URL(API_URL);
+    url.searchParams.append('offset', params.offset || '0');
+    url.searchParams.append('limit', params.limit || '30000000');
+    return url.toString();
+}
+
 // Configuration of sensor locations and names
 const sensorNames = {
     'mjn-u-cz1': {
