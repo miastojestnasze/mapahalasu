@@ -1,5 +1,5 @@
 // API configuration
-const API_URL = 'https://vps-76e4aba0.vps.ovh.net/samples';
+const API_URL = 'https://noise.kredytoweobliczenia.pl/samples';
 const API_DEFAULT_LIMIT = 50000; // ~miesiąc danych dla 8 czujników
 
 function buildApiUrl(params = {}) {
