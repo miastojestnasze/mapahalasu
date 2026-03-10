@@ -343,7 +343,8 @@
             // Clear sensor markers array
             sensorMarkers = [];
 
-            fetch(buildApiUrl())
+            // Mapa potrzebuje max 48h danych (~5000 rekordów)
+            fetch(buildApiUrl({ limit: 5000 }))
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok: ' + response.status);

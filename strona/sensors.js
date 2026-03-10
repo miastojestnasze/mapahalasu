@@ -1,10 +1,11 @@
 // API configuration
 const API_URL = 'https://vps-76e4aba0.vps.ovh.net/samples';
+const API_DEFAULT_LIMIT = 50000; // ~miesiąc danych dla 8 czujników
 
 function buildApiUrl(params = {}) {
     const url = new URL(API_URL);
     url.searchParams.append('offset', params.offset || '0');
-    url.searchParams.append('limit', params.limit || '30000000');
+    url.searchParams.append('limit', params.limit || API_DEFAULT_LIMIT);
     return url.toString();
 }
 

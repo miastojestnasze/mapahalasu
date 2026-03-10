@@ -33,3 +33,11 @@ ref 4: https://github.com/Milesight-IoT/SensorDecoders
 ref 5: https://resource.milesight.com/milesight/iot/document/ws302-datasheet-en.pdf
 
 
+# zrodlo danych
+
+Czujniki przesylaja dane na platforme: https://mjn-noise.eu1.cloud.thethings.industries
+
+z której za pomocą webhooka dane trafiają na serwer 
+do akwizycji danych - noise server
+
+repo noise-server : https://github.com/miastojestnasze/noise-server
