@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wykresy Hałasu MJN</title>
-    <!-- Add D3.js for charts -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Chart.js with time scale adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <!-- Add Figtree font -->
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Common styles -->
@@ -85,14 +86,15 @@
     <script>
         // Color palette for different sensors
         const sensorColors = [
-            '#a18ffa', '#ff6b6b', '#4ecdc4', '#45b7d1', 
+            '#a18ffa', '#ff6b6b', '#4ecdc4', '#45b7d1',
             '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7'
         ];
 
         let allSensorData = [];
-        let chartSvg = null;
-        let activeDatasets = new Set(); // Track which datasets are currently visible
-        let availableSensors = new Set(); // Track which sensors have data
+        let combinedChart = null; // Chart.js instance
+        let activeDatasets = new Set();
+        let availableSensors = new Set();
+        let sensorIdToIndex = {}; // Map sensor ID to dataset index
 
         // Fetch sensor data from the server
         function fetchData() {
@@ -117,53 +119,37 @@
         function filterDataByTimeRange(data, hoursBack) {
             const currentTimestamp = Math.floor(Date.now() / 1000);
             const cutoffTimestamp = currentTimestamp - (hoursBack * 3600);
-            
             return data.filter(reading => reading.timestamp >= cutoffTimestamp);
         }
 
         // Group data by sensor
         function groupDataBySensor(data) {
             const grouped = {};
-            
             data.forEach(reading => {
                 if (!grouped[reading.id]) {
                     grouped[reading.id] = [];
                 }
                 grouped[reading.id].push(reading);
             });
-
-            // Sort each sensor's data by timestamp
             Object.keys(grouped).forEach(sensorId => {
                 grouped[sensorId].sort((a, b) => a.timestamp - b.timestamp);
             });
-
             return grouped;
         }
 
         // Calculate statistics
         function calculateStats(data) {
             if (data.length === 0) return {};
-
             const metricType = document.getElementById('metricType').value;
             const noiseLevels = data.map(reading => {
-                if (metricType === 'Leq') {
-                    return reading.Leq || 0;
-                } else {
-                    return reading.Lmax || reading.loudness || 0;
-                }
+                return metricType === 'Leq' ? (reading.Leq || 0) : (reading.Lmax || reading.loudness || 0);
             });
             const validLevels = noiseLevels.filter(level => level > 0);
-
             if (validLevels.length === 0) return {};
-
-            const avg = validLevels.reduce((sum, level) => sum + level, 0) / validLevels.length;
-            const max = Math.max(...validLevels);
-            const min = Math.min(...validLevels);
-
             return {
-                average: avg.toFixed(1),
-                maximum: max.toFixed(1),
-                minimum: min.toFixed(1),
+                average: (validLevels.reduce((sum, l) => sum + l, 0) / validLevels.length).toFixed(1),
+                maximum: Math.max(...validLevels).toFixed(1),
+                minimum: Math.min(...validLevels).toFixed(1),
                 readings: validLevels.length
             };
         }
@@ -171,17 +157,12 @@
         // Display statistics
         function displayStats(groupedData) {
             const statsGrid = document.getElementById('statsGrid');
-            const timeRange = parseInt(document.getElementById('timeRange').value);
-            
-            // Calculate overall stats
             let allReadings = [];
             Object.values(groupedData).forEach(sensorData => {
                 allReadings = allReadings.concat(sensorData);
             });
-
             const overallStats = calculateStats(allReadings);
             const activeSensors = Object.keys(groupedData).length;
-
             statsGrid.innerHTML = `
                 <div class="stat-card">
                     <div class="stat-value">${activeSensors}</div>
@@ -198,32 +179,25 @@
         function createSensorCheckboxes(groupedData) {
             const checkboxContainer = document.getElementById('sensorCheckboxes');
             checkboxContainer.innerHTML = '';
-
-            // Update available sensors
             availableSensors.clear();
             Object.keys(groupedData).forEach(sensorId => {
                 if (groupedData[sensorId].length > 0) {
                     availableSensors.add(sensorId);
                 }
             });
-
             let colorIndex = 0;
             availableSensors.forEach(sensorId => {
                 const sensorName = sensorNames[sensorId] ? sensorNames[sensorId].adres : sensorId;
                 const color = sensorColors[colorIndex % sensorColors.length];
-                
                 const checkboxDiv = document.createElement('div');
                 checkboxDiv.className = 'sensor-checkbox';
-                
                 const isChecked = activeDatasets.has(sensorId) ? 'checked' : '';
-                
                 checkboxDiv.innerHTML = `
-                    <input type="checkbox" id="sensor-${sensorId}" ${isChecked} 
+                    <input type="checkbox" id="sensor-${sensorId}" ${isChecked}
                            onchange="toggleSensorFromCheckbox('${sensorId}')">
                     <label for="sensor-${sensorId}">${sensorName}</label>
                     <div class="sensor-color" style="background-color: ${color};"></div>
                 `;
-                
                 checkboxContainer.appendChild(checkboxDiv);
                 colorIndex++;
             });
@@ -232,55 +206,40 @@
         // Toggle sensor from checkbox
         function toggleSensorFromCheckbox(sensorId) {
             const checkbox = document.getElementById(`sensor-${sensorId}`);
-            
             if (checkbox.checked) {
                 activeDatasets.add(sensorId);
             } else {
                 activeDatasets.delete(sensorId);
             }
-            
-            // Update chart visibility
             updateChartVisibility();
         }
 
-        // Uncheck all sensors (clear selection)
+        // Uncheck all sensors
         function uncheckAllSensors() {
-            // Clear active datasets
             activeDatasets.clear();
-
-            // Uncheck all checkboxes in the UI
             availableSensors.forEach(sensorId => {
                 const checkbox = document.getElementById(`sensor-${sensorId}`);
                 if (checkbox) checkbox.checked = false;
             });
-
-            // Update chart visibility
             updateChartVisibility();
         }
 
         // Update chart visibility based on active datasets
         function updateChartVisibility() {
-            if (!chartSvg) return;
-            
-            availableSensors.forEach(sensorId => {
-                const lineGroup = d3.select(`.sensor-${sensorId}`);
-                const legendItem = d3.selectAll('.legend-item').filter(d => d.id === sensorId);
-                
-                if (activeDatasets.has(sensorId)) {
-                    lineGroup.style('opacity', 1);
-                    legendItem.classed('disabled', false);
-                } else {
-                    lineGroup.style('opacity', 0.1);
-                    legendItem.classed('disabled', true);
-                }
+            if (!combinedChart) return;
+            combinedChart.data.datasets.forEach((dataset, index) => {
+                const sensorId = dataset.sensorId;
+                const visible = activeDatasets.has(sensorId);
+                dataset.hidden = !visible;
             });
+            combinedChart.update();
         }
+
         // Create all charts
         function createCharts(groupedData) {
             const chartsGrid = document.getElementById('chartsGrid');
             chartsGrid.innerHTML = '';
 
-            // Initialize active datasets - by default, show all available sensors
             activeDatasets.clear();
             Object.keys(groupedData).forEach(sensorId => {
                 if (groupedData[sensorId].length > 0) {
@@ -288,46 +247,34 @@
                 }
             });
 
-            // Create sensor checkboxes
             createSensorCheckboxes(groupedData);
 
-            // Create only ONE chart container for all sensors
             const chartContainer = document.createElement('div');
             chartContainer.className = 'chart-container';
             chartContainer.innerHTML = `
-                <div id="chart-container" style="position: relative;">
-                    <svg id="combined-chart" class="chart-svg"></svg>
+                <div id="chart-container" style="position: relative; height: 500px;">
+                    <canvas id="combined-chart"></canvas>
                 </div>
             `;
-
             chartsGrid.appendChild(chartContainer);
 
-            // Create the combined chart
             setTimeout(() => {
-                createD3Chart(groupedData);
+                createChartJsChart(groupedData);
             }, 10);
         }
 
-        // Create a D3.js chart for all sensors
-        function createD3Chart(groupedData) {
-            const svg = d3.select('#combined-chart');
-            svg.selectAll('*').remove(); // Clear previous chart
+        // Create Chart.js chart for all sensors
+        function createChartJsChart(groupedData) {
+            // Destroy previous chart instance
+            if (combinedChart) {
+                combinedChart.destroy();
+                combinedChart = null;
+            }
 
-            const container = document.getElementById('chart-container');
-            const margin = { top: 80, right: 100, bottom: 60, left: 60 };
-            const width = container.clientWidth - margin.left - margin.right;
-            const height = 500 - margin.top - margin.bottom;
             const metricType = document.getElementById('metricType').value;
-
-            const chartGroup = svg
-                .attr('width', width + margin.left + margin.right)
-                .attr('height', height + margin.top + margin.bottom)
-                .append('g')
-                .attr('transform', `translate(${margin.left},${margin.top})`);
-
-            // Prepare data
             const datasets = [];
             let colorIndex = 0;
+            sensorIdToIndex = {};
 
             Object.keys(groupedData).forEach(sensorId => {
                 const sensorData = groupedData[sensorId];
@@ -336,168 +283,108 @@
                 const sensorName = sensorNames[sensorId] ? sensorNames[sensorId].adres : sensorId;
                 const color = sensorColors[colorIndex % sensorColors.length];
 
-                const dataPoints = sensorData.map(reading => {
-                    let value;
-                    if (metricType === 'Leq') {
-                        value = reading.Leq || 0;
-                    } else {
-                        value = reading.Lmax || reading.loudness || 0;
-                    }
-                    
-                    return {
-                        date: new Date(reading.timestamp * 1000),
-                        value: value,
-                        sensor: sensorId,
-                        sensorName: sensorName
-                    };
-                });
+                const dataPoints = sensorData.map(reading => ({
+                    x: new Date(reading.timestamp * 1000),
+                    y: metricType === 'Leq' ? (reading.Leq || 0) : (reading.Lmax || reading.loudness || 0)
+                }));
+
+                sensorIdToIndex[sensorId] = datasets.length;
 
                 datasets.push({
-                    id: sensorId,
-                    name: sensorName,
-                    color: color,
-                    data: dataPoints
+                    label: sensorName,
+                    sensorId: sensorId,
+                    data: dataPoints,
+                    borderColor: color,
+                    backgroundColor: color + '33',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: color,
+                    pointHitRadius: 10
                 });
 
                 colorIndex++;
             });
 
-            // Set up scales
-            const allData = datasets.flatMap(d => d.data);
-            const xScale = d3.scaleTime()
-                .domain(d3.extent(allData, d => d.date))
-                .range([0, width]);
-
-            const yScale = d3.scaleLinear()
-                .domain([30, 80])
-                .range([height, 0]);
-
-            // Create axes
-            const xAxis = d3.axisBottom(xScale)
-                .ticks(8)
-                .tickFormat(d3.timeFormat('%H:%M'));
-
-            const yAxis = d3.axisLeft(yScale)
-                .ticks(8);
-
-            chartGroup.append('g')
-                .attr('class', 'axis')
-                .attr('transform', `translate(0,${height})`)
-                .call(xAxis);
-
-            chartGroup.append('g')
-                .attr('class', 'axis')
-                .call(yAxis);
-
-            // Add axis labels
             const yAxisLabel = metricType === 'Leq' ? 'Poziom równoważny Leq (dB)' : 'Poziom maksymalny Lmax (dB)';
-            
-            chartGroup.append('text')
-                .attr('class', 'axis-label')
-                .attr('transform', 'rotate(-90)')
-                .attr('y', 0 - margin.left)
-                .attr('x', 0 - (height / 2))
-                .attr('dy', '1em')
-                .style('text-anchor', 'middle')
-                .text(yAxisLabel);
 
-            chartGroup.append('text')
-                .attr('class', 'axis-label')
-                .attr('transform', `translate(${width / 2}, ${height + margin.bottom - 10})`)
-                .style('text-anchor', 'middle')
-                .text('Czas');
-
-            // Create line generator
-            const line = d3.line()
-                .x(d => xScale(d.date))
-                .y(d => yScale(d.value))
-                .curve(d3.curveCardinal);
-
-
-
-            // Draw lines for each sensor
-            datasets.forEach(dataset => {
-                const lineGroup = chartGroup.append('g')
-                    .attr('class', `line-group sensor-${dataset.id}`);
-
-                // Draw line
-                lineGroup.append('path')
-                    .datum(dataset.data)
-                    .attr('class', 'line')
-                    .attr('d', line)
-                    .style('stroke', dataset.color)
-                    .style('stroke-width', '3px');
-
-                // Add dots
-                lineGroup.selectAll('.dot')
-                    .data(dataset.data)
-                    .enter().append('circle')
-                    .attr('class', 'dot')
-                    .attr('cx', d => xScale(d.date))
-                    .attr('cy', d => yScale(d.value))
-                    .style('fill', dataset.color);
-            });
-
-            // Create legend
-            const legend = chartGroup.append('g')
-                .attr('class', 'legend')
-                .attr('transform', `translate(${width + 20}, 20)`);
-
-            const legendItems = legend.selectAll('.legend-item')
-                .data(datasets)
-                .enter().append('g')
-                .attr('class', 'legend-item')
-                .attr('transform', (d, i) => `translate(0, ${i * 25})`)
-                .style('cursor', 'pointer')
-                .on('click', function(event, d) {
-                    toggleDataset(d.id);
-                });
-
-            legendItems.append('rect')
-                .attr('width', 18)
-                .attr('height', 18)
-                .style('fill', d => d.color);
-
-            legendItems.append('text')
-                .attr('x', 24)
-                .attr('y', 9)
-                .attr('dy', '0.35em')
-                .text(d => d.name);
-
-            // Function to toggle dataset visibility (from legend clicks)
-            function toggleDataset(sensorId) {
-                const checkbox = document.getElementById(`sensor-${sensorId}`);
-                
-                if (activeDatasets.has(sensorId)) {
-                    // Hide dataset
-                    activeDatasets.delete(sensorId);
-                    if (checkbox) checkbox.checked = false;
-                } else {
-                    // Show dataset
-                    activeDatasets.add(sensorId);
-                    if (checkbox) checkbox.checked = true;
+            const ctx = document.getElementById('combined-chart').getContext('2d');
+            combinedChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'dd.MM.yyyy HH:mm',
+                                displayFormats: {
+                                    hour: 'HH:mm',
+                                    day: 'dd.MM'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Czas',
+                                font: { size: 14, weight: 600 }
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            min: 30,
+                            max: 80,
+                            title: {
+                                display: true,
+                                text: yAxisLabel,
+                                font: { size: 14, weight: 600 }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            onClick: function(e, legendItem) {
+                                const sensorId = combinedChart.data.datasets[legendItem.datasetIndex].sensorId;
+                                const checkbox = document.getElementById(`sensor-${sensorId}`);
+                                if (activeDatasets.has(sensorId)) {
+                                    activeDatasets.delete(sensorId);
+                                    if (checkbox) checkbox.checked = false;
+                                } else {
+                                    activeDatasets.add(sensorId);
+                                    if (checkbox) checkbox.checked = true;
+                                }
+                                updateChartVisibility();
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
                 }
-                
-                updateChartVisibility();
-            }
-
-            chartSvg = svg;
+            });
         }
 
-        // Filter grouped data to include only sensors that are defined in sensorNames
+        // Filter grouped data to include only sensors defined in sensorNames
         function filterGroupedDataByKnownSensors(groupedData) {
             const filtered = {};
-
             Object.keys(groupedData).forEach(sensorId => {
-                // Only include sensors that are present in sensorNames and have data
                 if (Object.prototype.hasOwnProperty.call(sensorNames, sensorId) && groupedData[sensorId] && groupedData[sensorId].length > 0) {
                     filtered[sensorId] = groupedData[sensorId];
-                } else {
-                    // Unknown sensors are ignored
-                    console.warn('Ignoring unknown or empty sensor id:', sensorId);
                 }
             });
-
             return filtered;
         }
 
@@ -512,8 +399,6 @@
                     const timeRange = parseInt(document.getElementById('timeRange').value);
                     const filteredData = filterDataByTimeRange(data, timeRange);
                     const groupedData = groupDataBySensor(filteredData);
-
-                    // Only keep sensors that are declared in sensorNames
                     const knownGroupedData = filterGroupedDataByKnownSensors(groupedData);
 
                     displayStats(knownGroupedData);
