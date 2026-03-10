@@ -114,116 +114,15 @@
 
         // Store all sensor data globally for chart creation
         let allSensorData = [];
-
-        // Function to create a chart showing noise level changes over time
-        function createNoiseChart(sensorId, canvasId, metricType = 'Lmax') {
-            // Get the last 24 hours of data for this sensor
-            const currentTimestamp = Math.floor(Date.now() / 1000);
-            const oneDayAgo = currentTimestamp - 86400;
-
-            // Filter data for this sensor and for the last 24 hours
-            let sensorData = allSensorData.filter(reading => {
-                return reading.id === sensorId && reading.timestamp >= oneDayAgo;
-            });
-
-            // Sort by timestamp
-            sensorData.sort((a, b) => a.timestamp - b.timestamp);
-
-            // If there's no data, show a message
-            if (sensorData.length === 0) {
-                document.getElementById(canvasId).style.display = 'none';
-                const container = document.getElementById(canvasId).parentNode;
-                const noDataMsg = document.createElement('p');
-                noDataMsg.textContent = 'Brak danych z ostatnich 24 godzin.';
-                noDataMsg.style.textAlign = 'center';
-                noDataMsg.style.fontStyle = 'italic';
-                noDataMsg.style.color = '#888';
-                container.appendChild(noDataMsg);
-                return;
-            }
-
-            // Prepare data points for chart
-            const labels = sensorData.map(reading => {
-                const date = new Date(reading.timestamp * 1000);
-                return date.getHours() + ':' + (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
-            });
-
-            const noiseLevels = sensorData.map(reading => {
-                if (metricType === 'Leq') {
-                    return reading.Leq || 0;
-                } else {
-                    return reading.Lmax || reading.loudness || 0;
-                }
-            });
-
-            // Create the chart
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: `Poziom hałasu ${metricType} (dB)`,
-                        data: noiseLevels,
-                        backgroundColor: 'rgba(161, 143, 250, 0.2)', // Changed to #a18ffa with opacity
-                        borderColor: '#a18ffa', // Changed to #a18ffa
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0, // Remove point circles
-                        pointHoverRadius: 6, // Show points only on hover
-                        pointHoverBackgroundColor: 'rgba(75, 192, 192, 1)',
-                        pointHitRadius: 10 // Larger area for hover detection
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            min: Math.max(0, Math.min(...noiseLevels) - 5),
-                            title: {
-                                display: true,
-                                text: 'dB'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Godzina'
-                            },
-                            ticks: {
-                                maxRotation: 0,
-                                autoSkip: true,
-                                maxTicksLimit: 8 // Limit the number of x-axis labels
-                            }
-                        }
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `Poziom hałasu ${metricType} w ostatnich 24 godzinach`
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        },
-                        legend: {
-                            display: false // Hide legend since there's only one dataset
-                        }
-                    },
-                    interaction: {
-                        mode: 'nearest',
-                        axis: 'x',
-                        intersect: false
-                    }
-                }
-            });
-        }
+        const popupCharts = {}; // Track Chart.js instances to prevent memory leaks
 
         // Function to create a combined chart with both Lmax and Leq lines
         function createCombinedNoiseChart(sensorId, canvasId) {
+            // Destroy previous chart instance for this canvas
+            if (popupCharts[canvasId]) {
+                popupCharts[canvasId].destroy();
+                delete popupCharts[canvasId];
+            }
             // Get the last 24 hours of data for this sensor
             const currentTimestamp = Math.floor(Date.now() / 1000);
             const oneDayAgo = currentTimestamp - 86400;
@@ -260,7 +159,7 @@
 
             // Create the chart
             const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
+            popupCharts[canvasId] = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
