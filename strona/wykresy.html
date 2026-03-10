@@ -253,11 +253,8 @@
 
             const chartContainer = document.createElement('div');
             chartContainer.className = 'chart-container';
-            chartContainer.innerHTML = `
-                <div id="chart-container" class="chart-container">
-                    <canvas id="combined-chart"></canvas>
-                </div>
-            `;
+            chartContainer.id = 'chart-container';
+            chartContainer.innerHTML = `<canvas id="combined-chart"></canvas>`;
             chartsGrid.appendChild(chartContainer);
 
             setTimeout(() => {

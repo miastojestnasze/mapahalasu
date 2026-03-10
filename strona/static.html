@@ -82,7 +82,6 @@
                 <h4>Mapa Hałasu MJN</h4>
                 <img src="syrenka_halas.png" alt="Syrenka Hałasu">
             `;
-            // Removed the hover text - now only showing the title and image
         };
 
         info.addTo(map);
@@ -291,9 +290,8 @@
                             latitude = sensorNames[sensor.id].latitude;
                             longitude = sensorNames[sensor.id].longitude;
                         } else {
-                            // Use default coordinates for unknown sensors
-                            latitude = 0;
-                            longitude = 0;
+                            // Skip unknown sensors without location data
+                            return;
                         }
 
                         // Get noise level based on current metric
@@ -381,7 +379,7 @@
                             ${dataAgeInfo}
                             <div style="margin-top: 15px;">
                                 <h4 style="margin: 0 0 10px 0; text-align: center;">Poziomy hałasu w ostatnich 24 godzinach</h4>
-                                <div class="popup-chart-container" style="width: 300px; height: 200px;">
+                                <div class="popup-chart-container">
                                     <canvas id="${chartId}"></canvas>
                                 </div>
                             </div>
