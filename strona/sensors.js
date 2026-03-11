@@ -50,5 +50,10 @@ const sensorNames = {
         'adres': 'Żoliborz, ul. Gwiaździsta',
         'latitude': 52.27293965600434,
         'longitude': 20.99414155658846
+    },
+    'svantek-1': {
+        'adres': 'Wola, Al. Prymasa Tysiąclecia (Svantek)',
+        'latitude': 52.23160900551707,
+        'longitude': 20.955410030944826
     }
 };

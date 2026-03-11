@@ -33,11 +33,24 @@ ref 4: https://github.com/Milesight-IoT/SensorDecoders
 ref 5: https://resource.milesight.com/milesight/iot/document/ws302-datasheet-en.pdf
 
 
+# Svantek — stacja pomiarowa
+
+Czujnik Svantek (ID: `svantek-1`) to profesjonalna stacja pomiarowa zlokalizowana na Woli,
+Al. Prymasa Tysiąclecia. Dostarcza tylko metrykę LAeq (brak osobnych SPL/Lmax).
+
+Dane pobierane są z Svantek API (`POST https://svannet.com/api/v2.5/projects-get-result-data.php`,
+projekt 11138, punkt 0) przez svantek-poller — usługę systemd na EC2.
+
+Poller wysyła dane na endpoint `POST /ingest` noise-servera w formacie:
+`{"id": "svantek-1", "timestamp": <unix>, "Leq": <value>}`
+
+Kod pollera: `noise-server/svantek_poller/poller.py`
+
 # zrodlo danych
 
-Czujniki przesylaja dane na platforme: https://mjn-noise.eu1.cloud.thethings.industries
+Czujniki Milesight przesylaja dane na platforme: https://mjn-noise.eu1.cloud.thethings.industries
+z której za pomocą webhooka dane trafiają na `POST /samples` noise-servera (format TTN).
 
-z której za pomocą webhooka dane trafiają na serwer 
-do akwizycji danych - noise server
+Czujnik Svantek — dane pobierane przez svantek-poller na `POST /ingest` noise-servera.
 
 repo noise-server : https://github.com/miastojestnasze/noise-server
