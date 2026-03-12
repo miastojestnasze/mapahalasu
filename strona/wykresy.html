@@ -22,8 +22,8 @@
     <!-- Navigation Bar -->
     <div class="navbar">
         <a href="static.html">Mapa</a>
-        <a href="omapie.html">O mapie</a>
         <a href="wykresy.html" class="active">Wykresy</a>
+        <a href="halas/index.html">Hałas</a>
         <!-- Logo on the right side -->
         <div class="navbar-logo">
             <a href="https://miastojestnasze.org/" target="_blank" rel="noopener noreferrer">
@@ -43,17 +43,17 @@
                     <option value="168">Ostatni tydzień</option>
                     <option value="720">Ostatni miesiąc</option>
                 </select>
-                
+
                 <label for="metricType" class="metric-label">Metryka:</label>
                 <select id="metricType">
                     <option value="Lmax">Lmax (poziom maksymalny)</option>
                     <option value="Leq">Leq (poziom równoważny)</option>
                 </select>
-                
+
                 <button id="refreshButton" class="refresh-button">Odśwież dane</button>
                 <button id="uncheckAllButton" class="refresh-button secondary">Odznacz wszystkie</button>
             </div>
-            
+
             <div class="sensor-controls">
                 <h4>Wybierz czujniki do wyświetlenia:</h4>
                 <div class="sensor-checkboxes" id="sensorCheckboxes">
@@ -79,9 +79,30 @@
             <p>Wystąpił problem podczas pobierania danych z serwera.</p>
         </div>
 
-        <!-- Charts Grid -->
+        <!-- Charts Grid (instantaneous) -->
         <div class="charts-grid" id="chartsGrid" style="display: none;">
             <!-- Charts will be populated by JavaScript -->
+        </div>
+
+        <!-- Daily chart section -->
+        <div class="controls" style="margin-top: 30px;">
+            <div>
+                <h4 style="margin: 0 0 10px 0;">Wskaźniki dobowe</h4>
+                <label for="dailyMetricType">Metryka dobowa:</label>
+                <select id="dailyMetricType">
+                    <option value="LeqDoba">LeqDoba (06-06, cała doba)</option>
+                    <option value="LeqDzien">LeqDzień (06-22, dzień)</option>
+                    <option value="LeqNoc">LeqNoc (22-06, noc)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="dailyLoading" class="loading-indicator" style="display: none;">
+            <h3>Ładowanie danych dobowych...</h3>
+        </div>
+
+        <div class="charts-grid" id="dailyChartsGrid" style="display: none;">
+            <!-- Daily chart will be populated by JavaScript -->
         </div>
     </div>
 
@@ -93,10 +114,12 @@
         ];
 
         let allSensorData = [];
-        let combinedChart = null; // Chart.js instance
+        let allDailyData = [];
+        let combinedChart = null; // Chart.js instance for instantaneous data
+        let dailyChart = null;    // Chart.js instance for daily data
         let activeDatasets = new Set();
         let availableSensors = new Set();
-        let sensorIdToIndex = {}; // Map sensor ID to dataset index
+        let sensorIdToIndex = {};
 
         // Fetch sensor data from the server
         function fetchData() {
@@ -113,6 +136,24 @@
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
+                    throw error;
+                });
+        }
+
+        function fetchDailyData() {
+            return fetch(buildDailyUrl())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    allDailyData = data;
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error fetching daily data:', error);
                     throw error;
                 });
         }
@@ -135,6 +176,21 @@
             });
             Object.keys(grouped).forEach(sensorId => {
                 grouped[sensorId].sort((a, b) => a.timestamp - b.timestamp);
+            });
+            return grouped;
+        }
+
+        // Group daily data by sensor
+        function groupDailyDataBySensor(data) {
+            const grouped = {};
+            data.forEach(record => {
+                if (!grouped[record.sensor]) {
+                    grouped[record.sensor] = [];
+                }
+                grouped[record.sensor].push(record);
+            });
+            Object.keys(grouped).forEach(sensorId => {
+                grouped[sensorId].sort((a, b) => a.date.localeCompare(b.date));
             });
             return grouped;
         }
@@ -228,16 +284,21 @@
 
         // Update chart visibility based on active datasets
         function updateChartVisibility() {
-            if (!combinedChart) return;
-            combinedChart.data.datasets.forEach((dataset, index) => {
-                const sensorId = dataset.sensorId;
-                const visible = activeDatasets.has(sensorId);
-                dataset.hidden = !visible;
-            });
-            combinedChart.update();
+            if (combinedChart) {
+                combinedChart.data.datasets.forEach(dataset => {
+                    dataset.hidden = !activeDatasets.has(dataset.sensorId);
+                });
+                combinedChart.update();
+            }
+            if (dailyChart) {
+                dailyChart.data.datasets.forEach(dataset => {
+                    dataset.hidden = !activeDatasets.has(dataset.sensorId);
+                });
+                dailyChart.update();
+            }
         }
 
-        // Create all charts
+        // Create instantaneous charts
         function createCharts(groupedData) {
             const chartsGrid = document.getElementById('chartsGrid');
             chartsGrid.innerHTML = '';
@@ -262,9 +323,8 @@
             }, 10);
         }
 
-        // Create Chart.js chart for all sensors
+        // Create Chart.js chart for instantaneous data
         function createChartJsChart(groupedData) {
-            // Destroy previous chart instance
             if (combinedChart) {
                 combinedChart.destroy();
                 combinedChart = null;
@@ -376,6 +436,142 @@
             });
         }
 
+        // Render the daily chart from already-fetched allDailyData
+        function renderDailyChart() {
+            if (dailyChart) {
+                dailyChart.destroy();
+                dailyChart = null;
+            }
+
+            const dailyGrid = document.getElementById('dailyChartsGrid');
+            dailyGrid.innerHTML = '';
+
+            const grouped = groupDailyDataBySensor(allDailyData);
+            // Filter to known sensors only
+            const knownGrouped = {};
+            Object.keys(grouped).forEach(sensorId => {
+                if (sensorNames[sensorId] && grouped[sensorId].length > 0) {
+                    knownGrouped[sensorId] = grouped[sensorId];
+                }
+            });
+
+            if (Object.keys(knownGrouped).length === 0) {
+                dailyGrid.innerHTML = '<p style="text-align:center; color:#888; padding:20px;">Brak danych dobowych.</p>';
+                dailyGrid.style.display = 'grid';
+                return;
+            }
+
+            const chartContainer = document.createElement('div');
+            chartContainer.className = 'chart-container';
+            chartContainer.innerHTML = '<canvas id="daily-chart"></canvas>';
+            dailyGrid.appendChild(chartContainer);
+            dailyGrid.style.display = 'grid';
+
+            const metricType = document.getElementById('dailyMetricType').value;
+            const metricLabels = {
+                'LeqDzien': 'LeqDzień (06-22)',
+                'LeqNoc': 'LeqNoc (22-06)',
+                'LeqDoba': 'LeqDoba (06-06)'
+            };
+
+            const datasets = [];
+            let colorIndex = 0;
+
+            Object.keys(knownGrouped).forEach(sensorId => {
+                const sensorData = knownGrouped[sensorId];
+                const sensorName = sensorNames[sensorId] ? sensorNames[sensorId].adres : sensorId;
+                const color = sensorColors[colorIndex % sensorColors.length];
+
+                const dataPoints = sensorData
+                    .filter(record => record[metricType] != null)
+                    .map(record => ({
+                        x: new Date(record.date + 'T12:00:00'),
+                        y: record[metricType]
+                    }));
+
+                datasets.push({
+                    label: sensorName,
+                    sensorId: sensorId,
+                    data: dataPoints,
+                    borderColor: color,
+                    backgroundColor: color + '33',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: color,
+                    pointHitRadius: 10,
+                    hidden: !activeDatasets.has(sensorId)
+                });
+
+                colorIndex++;
+            });
+
+            setTimeout(() => {
+                const ctx = document.getElementById('daily-chart').getContext('2d');
+                dailyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'day',
+                                    tooltipFormat: 'dd.MM.yyyy',
+                                    displayFormats: { day: 'dd.MM' }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Data',
+                                    font: { size: 14, weight: 600 }
+                                }
+                            },
+                            y: {
+                                min: 30,
+                                max: 80,
+                                title: {
+                                    display: true,
+                                    text: (metricLabels[metricType] || metricType) + ' (dB)',
+                                    font: { size: 14, weight: 600 }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                onClick: function(e, legendItem) {
+                                    const sensorId = dailyChart.data.datasets[legendItem.datasetIndex].sensorId;
+                                    const checkbox = document.getElementById(`sensor-${sensorId}`);
+                                    if (activeDatasets.has(sensorId)) {
+                                        activeDatasets.delete(sensorId);
+                                        if (checkbox) checkbox.checked = false;
+                                    } else {
+                                        activeDatasets.add(sensorId);
+                                        if (checkbox) checkbox.checked = true;
+                                    }
+                                    updateChartVisibility();
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }, 10);
+        }
+
         // Filter grouped data to include only sensors defined in sensorNames
         function filterGroupedDataByKnownSensors(groupedData) {
             const filtered = {};
@@ -392,9 +588,11 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error').style.display = 'none';
             document.getElementById('chartsGrid').style.display = 'none';
+            document.getElementById('dailyLoading').style.display = 'block';
+            document.getElementById('dailyChartsGrid').style.display = 'none';
 
-            fetchData()
-                .then(data => {
+            Promise.all([fetchData(), fetchDailyData()])
+                .then(([data]) => {
                     const timeRange = parseInt(document.getElementById('timeRange').value);
                     const filteredData = filterDataByTimeRange(data, timeRange);
                     const groupedData = groupDataBySensor(filteredData);
@@ -405,10 +603,15 @@
 
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('chartsGrid').style.display = 'grid';
+
+                    // Render daily chart
+                    document.getElementById('dailyLoading').style.display = 'none';
+                    renderDailyChart();
                 })
                 .catch(error => {
                     console.error('Error loading data:', error);
                     document.getElementById('loading').style.display = 'none';
+                    document.getElementById('dailyLoading').style.display = 'none';
                     document.getElementById('error').style.display = 'block';
                 });
         }
@@ -418,6 +621,7 @@
         document.getElementById('metricType').addEventListener('change', loadData);
         document.getElementById('refreshButton').addEventListener('click', loadData);
         document.getElementById('uncheckAllButton').addEventListener('click', uncheckAllSensors);
+        document.getElementById('dailyMetricType').addEventListener('change', renderDailyChart);
 
         // Initial load
         loadData();

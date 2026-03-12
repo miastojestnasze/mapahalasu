@@ -1,22 +1,87 @@
-# mapahałasu
+# AGENTS.md — mapahałasu
 
-Projekt zawiera repozytorium małej strony internetowej hostowanej na S3 bucket (aws).
+Kontekst dla agentów AI pracujących z tym repozytorium.
 
-Strona przedtawia wizualizację danych pomiarowych z czujników hałasu ulokowanych w Warszawie.
+## Czym jest ten projekt
 
-Strona jest obecnie widoczna w domenie https://mapahalasu.miastojestnasze.org/
+Statyczna strona internetowa wyświetlająca dane z czujników hałasu w Warszawie.
+Frontend-only — cały JS jest inline w plikach HTML, brak bundlera/frameworka.
+Dane pobierane z API noise-servera przez `fetch()`.
 
-# Czujniki pomiarowe
+## Powiązane repozytoria
 
+- **noise-server** (`/home/szalaj/repos/noise-server/`) — backend API zbierający pomiary
+- **halas** (`/home/szalaj/repos/halas/`) — skrypty analityczne i pomocnicze
 
-Milesight WS302 to inteligentny czujnik poziomu dźwięku, zapewniający pomiar 
-w zakresie od 30 dB do 130 dB, z możliwością konfiguracji parametrów przez sieć LoRaWAN. 
-Doskonały do monitorowania hałasu w miejscach publicznych, przemysłowych itd.
+## Architektura
 
-ref 1: https://iotsolution.sklep.pl/pl/products/czujnik-poziomu-dzwieku-lorawan-milesight-ws302-124.html
-ref 2: https://www.milesight.com/iot/product/lorawan-sensor/ws302
-ref 3: https://resource.milesight.com/milesight/iot/document/ws302-user-guide-en.pdf
-ref 4: https://github.com/Milesight-IoT/SensorDecoders
-ref 5: https://resource.milesight.com/milesight/iot/document/ws302-datasheet-en.pdf
+```
+Czujniki → noise-server (EC2:5555) → GET /samples → ta strona (S3 + CloudFront)
+```
 
+Strona nie ma własnego backendu — jest serwowana statycznie z S3.
+Dane pobiera bezpośrednio z `https://noise.kredytoweobliczenia.pl/samples`.
 
+## Struktura plików
+
+```
+strona/
+├── static.html    — mapa (Leaflet.js, inline JS)
+├── wykresy.html   — wykresy (Chart.js, inline JS)
+├── omapie.html    — strona informacyjna
+├── styles.css     — wspólne style
+├── sensors.js     — definicje czujników + konfiguracja API
+└── *.png, *.ico   — grafiki
+```
+
+## Konwencje kodu
+
+- Cały JS jest inline w plikach HTML (brak osobnych plików .js oprócz sensors.js)
+- `sensors.js` eksportuje globalne zmienne: `sensorNames`, `API_URL`, `API_DEFAULT_LIMIT`, `buildApiUrl()`
+- Mapa używa Leaflet.js, wykresy Chart.js — ładowane z CDN
+- Style współdzielone przez `styles.css`, załadowany w każdym HTML
+- Czcionka: Figtree (Google Fonts)
+
+## Jak dodać czujnik
+
+1. Dodaj wpis do `sensorNames` w `strona/sensors.js`:
+   ```javascript
+   'sensor-id': {
+       'adres': 'Dzielnica, ul. Nazwa',
+       'latitude': 52.xxx,
+       'longitude': 20.xxx
+   }
+   ```
+2. Jeśli czujników > 9, dodaj kolor do tablicy `sensorColors` w `strona/wykresy.html`
+3. Dane muszą pojawiać się w API pod tym samym `id` — konfiguracja po stronie noise-server
+
+## Jak robić deploy
+
+AWS profil: `raspi`
+
+```bash
+aws s3 sync strona/ s3://mapahalasu.miastojestnasze.org/ --profile raspi --delete
+aws cloudfront create-invalidation --distribution-id E159RA1X9TXVNP --paths "/*" --profile raspi
+```
+
+## Format danych z API
+
+```json
+GET /samples?offset=0&limit=50000
+[
+  {"id": "mjn-cz-noise-4", "timestamp": 1773175117, "loudness": 47.4, "SPL": 47.4, "Lmax": 57.9, "Leq": 43.4},
+  {"id": "svantek-1", "timestamp": 1773127500, "loudness": 65.7, "SPL": 65.7, "Lmax": 65.7, "Leq": 65.7}
+]
+```
+
+- `loudness` = `SPL` (zachowane dla kompatybilności wstecznej)
+- Czujniki Svantek mają SPL = Lmax = Leq (dostarczają tylko LAeq)
+- Strona filtruje dane do czujników zdefiniowanych w `sensorNames` (nieznane ID są ignorowane)
+
+## EC2 noise-server — informacje operacyjne
+
+- IP: `16.16.13.212`
+- SSH: `ssh -i ~/.ssh/noise-server.pem ec2-user@16.16.13.212`
+- Katalog: `/home/ec2-user/noise-server/`
+- Usługi: `noise-server.service` (port 5555), `svantek-poller.service`
+- Restart: `sudo systemctl restart noise-server`

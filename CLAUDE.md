@@ -1,56 +1,98 @@
 # mapahałasu
 
-Projekt zawiera repozytorium małej strony internetowej hostowanej na S3 bucket (aws).
+Strona internetowa wizualizująca dane z czujników hałasu w Warszawie.
+Projekt stowarzyszenia Miasto Jest Nasze.
 
-Strona przedstawia wizualizację danych pomiarowych z czujników hałasu ulokowanych w Warszawie.
+Strona: https://mapahalasu.miastojestnasze.org/
+Organizacja GitHub: https://github.com/miastojestnasze
 
-Strona jest obecnie widoczna w domenie https://mapahalasu.miastojestnasze.org/
+## Architektura systemu
 
-# Struktura projektu
+```
+Czujniki Milesight WS302 (LoRaWAN)
+        │
+        ▼
+The Things Industries (webhook)
+        │ POST /samples (format TTN)
+        ▼
+   noise-server (EC2, port 5555)  ◄── svantek-poller (systemd)
+        │                                    │
+        │                              Svantek API
+        │                              POST /ingest
+        ▼
+  Strona (S3 + CloudFront)
+  fetch GET /samples
+```
 
-- `strona/` — pliki strony internetowej (HTML, CSS, JS, obrazki), deployowane na S3
-  - `static.html` — główna strona z mapą
-  - `wykresy.html` — strona z wykresami
-  - `omapie.html` — strona "O mapie"
-  - `styles.css` — arkusz stylów
-  - `sensors.js` — konfiguracja czujników
-  - `logo.png`, `syrenka_halas.png` — grafiki
-- `convert_to_pdf.py` — skrypt pomocniczy do konwersji PDF
-- `scenariusz.txt` — scenariusz
-- `zadania.md` — lista zadań
+- **noise-server** — backend Python (Starlette/uvicorn), zbiera i serwuje pomiary
+  - repo: https://github.com/miastojestnasze/noise-server
+  - lokalne repo: `/home/szalaj/repos/noise-server/`
+  - API publiczne: `https://noise.kredytoweobliczenia.pl`
+  - EC2: `16.16.13.212` (SSH: `ssh -i ~/.ssh/noise-server.pem ec2-user@16.16.13.212`)
+  - katalog na EC2: `/home/ec2-user/noise-server/`
+  - usługi systemd: `noise-server.service`, `svantek-poller.service`
+- **mapahalasu** (to repo) — frontend (statyczny HTML/CSS/JS), hostowany na S3
+- **halas** — repo pomocnicze ze skryptami analitycznymi (`/home/szalaj/repos/halas/`)
 
-# Czujniki pomiarowe
+## Struktura projektu
 
+- `strona/` — pliki strony deployowane na S3
+  - `static.html` — główna strona z mapą (Leaflet.js)
+  - `wykresy.html` — strona z wykresami (Chart.js)
+  - `omapie.html` — strona informacyjna "O mapie"
+  - `styles.css` — wspólny arkusz stylów
+  - `sensors.js` — konfiguracja czujników (ID, adresy, współrzędne) + konfiguracja API
+  - `logo.png`, `syrenka_halas.png`, `favicon.ico` — grafiki
 
-Milesight WS302 to inteligentny czujnik poziomu dźwięku, zapewniający pomiar 
-w zakresie od 30 dB do 130 dB, z możliwością konfiguracji parametrów przez sieć LoRaWAN. 
-Doskonały do monitorowania hałasu w miejscach publicznych, przemysłowych itd.
+## Czujniki
 
-ref 1: https://iotsolution.sklep.pl/pl/products/czujnik-poziomu-dzwieku-lorawan-milesight-ws302-124.html
-ref 2: https://www.milesight.com/iot/product/lorawan-sensor/ws302
-ref 3: https://resource.milesight.com/milesight/iot/document/ws302-user-guide-en.pdf
-ref 4: https://github.com/Milesight-IoT/SensorDecoders
-ref 5: https://resource.milesight.com/milesight/iot/document/ws302-datasheet-en.pdf
+### Milesight WS302 (8 sztuk, ID: `mjn-*`)
 
+Czujniki LoRaWAN mierzące SPL (LAI), Lmax (LAImax) i Leq (LAeq).
+Dane przesyłane przez The Things Industries → webhook → `POST /samples` noise-servera.
 
-# Svantek — stacja pomiarowa
+Dokumentacja: https://www.milesight.com/iot/product/lorawan-sensor/ws302
 
-Czujnik Svantek (ID: `svantek-1`) to profesjonalna stacja pomiarowa zlokalizowana na Woli,
-Al. Prymasa Tysiąclecia. Dostarcza tylko metrykę LAeq (brak osobnych SPL/Lmax).
+### Svantek (1 sztuka, ID: `svantek-1`)
 
-Dane pobierane są z Svantek API (`POST https://svannet.com/api/v2.5/projects-get-result-data.php`,
-projekt 11138, punkt 0) przez svantek-poller — usługę systemd na EC2.
+Profesjonalna stacja pomiarowa na Woli, Al. Prymasa Tysiąclecia.
+Dostarcza tylko LAeq (SPL i Lmax wypełniane tą samą wartością).
 
-Poller wysyła dane na endpoint `POST /ingest` noise-servera w formacie:
-`{"id": "svantek-1", "timestamp": <unix>, "Leq": <value>}`
+Dane pobierane co 60s przez `svantek-poller` z Svantek API → `POST /ingest` noise-servera.
+- Svantek API: `POST https://svannet.com/api/v2.5/projects-get-result-data.php`
+- Projekt: 11138, Punkt: 0
+- Token API: zmienna `SVANTEK_TOKEN` (plik `.env` na EC2)
+- Kod pollera: `/home/szalaj/repos/noise-server/svantek_poller/poller.py`
 
-Kod pollera: `noise-server/svantek_poller/poller.py`
+## Dodawanie nowego czujnika
 
-# zrodlo danych
+1. Jeśli czujnik Milesight — skonfigurować webhook w The Things Industries na `POST /samples`
+2. Jeśli inny typ — napisać poller wysyłający dane na `POST /ingest` (format: `{"id": "...", "timestamp": <unix>, "Leq": <val>}`)
+3. Dodać wpis w `strona/sensors.js` (ID, adres, współrzędne)
+4. Jeśli >9 czujników — dodać kolor do palety `sensorColors` w `strona/wykresy.html`
+5. Deploy strony na S3
 
-Czujniki Milesight przesylaja dane na platforme: https://mjn-noise.eu1.cloud.thethings.industries
-z której za pomocą webhooka dane trafiają na `POST /samples` noise-servera (format TTN).
+## Deploy strony na S3
 
-Czujnik Svantek — dane pobierane przez svantek-poller na `POST /ingest` noise-servera.
+AWS profil: `raspi`
 
-repo noise-server : https://github.com/miastojestnasze/noise-server
+```bash
+aws s3 sync strona/ s3://mapahalasu.miastojestnasze.org/ --profile raspi --delete
+aws cloudfront create-invalidation --distribution-id E159RA1X9TXVNP --paths "/*" --profile raspi
+```
+
+## Deploy noise-server na EC2
+
+Opcja A — przez CI/CD (push na `main` w GitHub → automatyczny SCP + SSH)
+Opcja B — ręcznie:
+```bash
+scp -i ~/.ssh/noise-server.pem <pliki> ec2-user@16.16.13.212:/home/ec2-user/noise-server/
+ssh -i ~/.ssh/noise-server.pem ec2-user@16.16.13.212 "sudo systemctl restart noise-server"
+```
+
+## Kluczowe pliki do edycji
+
+- Nowy czujnik → `strona/sensors.js`
+- Wygląd strony → `strona/styles.css`, `strona/static.html`, `strona/wykresy.html`
+- Logika mapy → `strona/static.html` (inline JS z Leaflet)
+- Logika wykresów → `strona/wykresy.html` (inline JS z Chart.js)

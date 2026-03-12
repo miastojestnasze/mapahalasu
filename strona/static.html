@@ -24,8 +24,8 @@
     <!-- Navigation Bar -->
     <div class="navbar">
         <a href="static.html" class="active">Mapa</a>
-        <a href="omapie.html">O mapie</a>
         <a href="wykresy.html">Wykresy</a>
+        <a href="halas/index.html">Hałas</a>
         <!-- Logo on the right side -->
         <div class="navbar-logo">
             <a href="https://miastojestnasze.org/" target="_blank" rel="noopener noreferrer">
@@ -68,24 +68,6 @@
             return noiseValue * 0.5; // Reduced from 0.8 to 0.5 to make circles smaller
         }
 
-        // Create info panel
-        const info = L.control();
-
-        info.onAdd = function (map) {
-            this._div = L.DomUtil.create('div', 'info-panel');
-            this.update();
-            return this._div;
-        };
-
-        info.update = function (props) {
-            this._div.innerHTML = `
-                <h4>Mapa Hałasu MJN</h4>
-                <img src="syrenka_halas.png" alt="Syrenka Hałasu">
-            `;
-        };
-
-        info.addTo(map);
-
         // Create legend
         const legend = L.control({ position: 'bottomright' });
 
@@ -104,18 +86,57 @@
 
             // Add gray for inactive sensors - positioned on a new line below the 65+ entry
             div.innerHTML += '<br><i style="background:#888888"></i> Brak danych w 24h<br>';
+            div.innerHTML += '<br><i style="background:#e74c3c; border-radius: 50%;"></i> Sprawa / case<br>';
+            div.innerHTML += '<i style="background:#3498db; border-radius: 50%;"></i> Zgłoszenie mieszkańców<br>';
 
             return div;
         };
 
         legend.addTo(map);
 
+        // Render map points (reports and cases)
+        function renderMapPoints() {
+            const pointColors = { 'case': '#e74c3c', 'report': '#3498db' };
+            const pointLabels = { 'case': 'Sprawa', 'report': 'Zgłoszenie' };
+
+            mapPoints.forEach(point => {
+                const color = pointColors[point.type] || '#999';
+                const label = pointLabels[point.type] || point.type;
+
+                const marker = L.circleMarker([point.latitude, point.longitude], {
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.7,
+                    weight: 2,
+                    radius: 10
+                }).addTo(map);
+
+                const popupHtml = `
+                    <h3>${point.title}</h3>
+                    <p style="color: ${color}; font-weight: 600; font-size: 0.9em;">${label}</p>
+                    <p>${point.description}</p>
+                    ${point.link ? `<p><a href="${point.link}" style="color: #a18ffa; font-weight: 500;">Więcej informacji</a></p>` : ''}
+                `;
+
+                marker.bindPopup(popupHtml);
+                sensorMarkers.push(marker);
+            });
+        }
+
+        renderMapPoints();
+
         // Show loading indicator
         document.getElementById('loading').style.display = 'block';
 
         // Store all sensor data globally for chart creation
         let allSensorData = [];
+        let dailyData = [];
         const popupCharts = {}; // Track Chart.js instances to prevent memory leaks
+
+        function formatWindow(seconds) {
+            if (seconds >= 60) return Math.round(seconds / 60) + ' min';
+            return seconds + ' s';
+        }
 
         // Function to create a combined chart with both Lmax and Leq lines
         function createCombinedNoiseChart(sensorId, canvasId) {
@@ -244,19 +265,17 @@
             sensorMarkers = [];
 
             // Mapa potrzebuje max 48h danych (~5000 rekordów)
-            fetch(buildApiUrl({ limit: 5000 }))
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
+            Promise.all([
+                fetch(buildApiUrl({ limit: 5000 })).then(r => r.ok ? r.json() : Promise.reject(r.status)),
+                fetch(buildDailyUrl()).then(r => r.ok ? r.json() : [])
+            ])
+                .then(([data, daily]) => {
                     // Hide loading indicator
                     document.getElementById('loading').style.display = 'none';
 
                     // Store all data globally
                     allSensorData = data;
+                    dailyData = daily;
 
                     // Create a map to store the latest reading for each sensor
                     const latestSensorData = new Map();
@@ -372,8 +391,29 @@
                             '<p style="color: #888;"><strong>Uwaga:</strong> Dane starsze niż 24 godziny</p>' :
                             '';
 
+                        const sensorMeta = sensorNames[sensor.id] || {};
+                        const sensorTypeInfo = sensorMeta.type
+                            ? `<p style="color: #666; font-size: 0.9em;">${sensorMeta.type} &middot; okno pomiarowe ${formatWindow(sensorMeta.measurementWindow)}</p>`
+                            : '';
+
+                        // Find latest complete daily record for this sensor (all 3 values present)
+                        const sensorDailyAll = dailyData
+                            .filter(d => d.sensor === sensor.id)
+                            .sort((a, b) => b.date.localeCompare(a.date));
+                        const sensorDaily = sensorDailyAll.find(d => d.LeqDzien != null && d.LeqNoc != null && d.LeqDoba != null)
+                            || sensorDailyAll[0];
+                        const dailyInfo = sensorDaily
+                            ? `<div style="margin-top: 10px; font-size: 0.9em;">
+                                <strong>Ostatnia doba (${sensorDaily.date}):</strong><br>
+                                LeqDzień: ${sensorDaily.LeqDzien != null ? sensorDaily.LeqDzien + ' dB' : '—'}
+                                | LeqNoc: ${sensorDaily.LeqNoc != null ? sensorDaily.LeqNoc + ' dB' : '—'}
+                                | LeqDoba: ${sensorDaily.LeqDoba != null ? sensorDaily.LeqDoba + ' dB' : '—'}
+                              </div>`
+                            : '';
+
                         const popupContent = `
-                            <h3>${sensorNames[sensor.id] ? sensorNames[sensor.id].adres : sensor.id}</h3>
+                            <h3>${sensorMeta.adres || sensor.id}</h3>
+                            ${sensorTypeInfo}
                             <p> <strong>Lmax:</strong> <span style="font-weight: 700; font-size: 1.3em;">${lmaxValue} dB</span>, <strong>Leq:</strong> <span style="font-weight: 700; font-size: 1.3em;">${leqValue} dB</span></p>
                             <p><strong>Ostatni pomiar:</strong> ${timestamp}</p>
                             ${dataAgeInfo}
@@ -383,6 +423,7 @@
                                     <canvas id="${chartId}"></canvas>
                                 </div>
                             </div>
+                            ${dailyInfo}
                         `;
 
                         // Add popup to both circles
@@ -400,23 +441,6 @@
                             setTimeout(() => {
                                 createCombinedNoiseChart(sensor.id, chartId);
                             }, 10);
-                        });
-
-                        // Create sensor props objects for the info panel
-                        const sensorProps = {
-                            id: sensor.id,
-                            Lmax: lmaxValue,
-                            Leq: leqValue,
-                            timestamp: sensor.timestamp || 0
-                        };
-
-                        // When circles are clicked, update the info panel with this sensor's info
-                        leqCircle.on('click', function () {
-                            info.update(sensorProps);
-                        });
-
-                        lmaxCircle.on('click', function () {
-                            info.update(sensorProps);
                         });
 
 
@@ -443,6 +467,9 @@
 
             // Fetch fresh data
             fetchData();
+
+            // Re-render map points
+            renderMapPoints();
         }
 
         // Set up automatic refresh every 3 minutes (180000 milliseconds)
