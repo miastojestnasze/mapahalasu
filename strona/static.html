@@ -264,9 +264,9 @@
             // Clear sensor markers array
             sensorMarkers = [];
 
-            // Mapa potrzebuje max 48h danych (~5000 rekordów)
+            // Mapa potrzebuje wszystkie dane (różne czujniki raportują z różną częstotliwością)
             Promise.all([
-                fetch(buildApiUrl({ limit: 5000 })).then(r => r.ok ? r.json() : Promise.reject(r.status)),
+                fetch(buildApiUrl({ limit: 50000 })).then(r => r.ok ? r.json() : Promise.reject(r.status)),
                 fetch(buildDailyUrl()).then(r => r.ok ? r.json() : [])
             ])
                 .then(([data, daily]) => {
