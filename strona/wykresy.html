@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Sensor configuration -->
     <script src="sensors.js"></script>
+    <!-- Shared chart utilities -->
+    <script src="charts-config.js"></script>
 </head>
 
 <body>
@@ -107,12 +109,6 @@
     </div>
 
     <script>
-        // Color palette for different sensors
-        const sensorColors = [
-            '#a18ffa', '#ff6b6b', '#4ecdc4', '#45b7d1',
-            '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#2ecc71'
-        ];
-
         let allSensorData = [];
         let allDailyData = [];
         let combinedChart = null; // Chart.js instance for instantaneous data
@@ -156,43 +152,6 @@
                     console.error('Error fetching daily data:', error);
                     throw error;
                 });
-        }
-
-        // Filter data based on time range
-        function filterDataByTimeRange(data, hoursBack) {
-            const currentTimestamp = Math.floor(Date.now() / 1000);
-            const cutoffTimestamp = currentTimestamp - (hoursBack * 3600);
-            return data.filter(reading => reading.timestamp >= cutoffTimestamp);
-        }
-
-        // Group data by sensor
-        function groupDataBySensor(data) {
-            const grouped = {};
-            data.forEach(reading => {
-                if (!grouped[reading.id]) {
-                    grouped[reading.id] = [];
-                }
-                grouped[reading.id].push(reading);
-            });
-            Object.keys(grouped).forEach(sensorId => {
-                grouped[sensorId].sort((a, b) => a.timestamp - b.timestamp);
-            });
-            return grouped;
-        }
-
-        // Group daily data by sensor
-        function groupDailyDataBySensor(data) {
-            const grouped = {};
-            data.forEach(record => {
-                if (!grouped[record.sensor]) {
-                    grouped[record.sensor] = [];
-                }
-                grouped[record.sensor].push(record);
-            });
-            Object.keys(grouped).forEach(sensorId => {
-                grouped[sensorId].sort((a, b) => a.date.localeCompare(b.date));
-            });
-            return grouped;
         }
 
         // Calculate statistics
@@ -349,20 +308,11 @@
 
                 sensorIdToIndex[sensorId] = datasets.length;
 
-                datasets.push({
+                datasets.push(Object.assign({
                     label: sensorName,
                     sensorId: sensorId,
-                    data: dataPoints,
-                    borderColor: color,
-                    backgroundColor: color + '33',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: color,
-                    pointHitRadius: 10
-                });
+                    data: dataPoints
+                }, defaultDatasetStyle(color, { borderWidth: 3, pointHoverRadius: 5, pointHitRadius: 10 })));
 
                 colorIndex++;
             });
@@ -373,42 +323,25 @@
             combinedChart = new Chart(ctx, {
                 type: 'line',
                 data: { datasets: datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                options: defaultChartOptions({
                     scales: {
                         x: {
                             type: 'time',
                             time: {
                                 tooltipFormat: 'dd.MM.yyyy HH:mm',
-                                displayFormats: {
-                                    hour: 'HH:mm',
-                                    day: 'dd.MM'
-                                }
+                                displayFormats: { hour: 'HH:mm', day: 'dd.MM' }
                             },
-                            title: {
-                                display: true,
-                                text: 'Czas',
-                                font: { size: 14, weight: 600 }
-                            },
-                            ticks: {
-                                maxTicksLimit: 10
-                            }
+                            title: { display: true, text: 'Czas', font: { size: 14, weight: 600 } },
+                            ticks: { maxTicksLimit: 10 }
                         },
                         y: {
                             suggestedMin: 30,
                             suggestedMax: 80,
-                            title: {
-                                display: true,
-                                text: yAxisLabel,
-                                font: { size: 14, weight: 600 }
-                            }
+                            title: { display: true, text: yAxisLabel, font: { size: 14, weight: 600 } }
                         }
                     },
                     plugins: {
                         legend: {
-                            display: true,
-                            position: 'top',
                             onClick: function(e, legendItem) {
                                 const sensorId = combinedChart.data.datasets[legendItem.datasetIndex].sensorId;
                                 const checkbox = document.getElementById(`sensor-${sensorId}`);
@@ -421,18 +354,9 @@
                                 }
                                 updateChartVisibility();
                             }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
                         }
-                    },
-                    interaction: {
-                        mode: 'nearest',
-                        axis: 'x',
-                        intersect: false
                     }
-                }
+                })
             });
         }
 
@@ -489,21 +413,12 @@
                         y: record[metricType]
                     }));
 
-                datasets.push({
+                datasets.push(Object.assign({
                     label: sensorName,
                     sensorId: sensorId,
                     data: dataPoints,
-                    borderColor: color,
-                    backgroundColor: color + '33',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0.4,
-                    pointRadius: 3,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: color,
-                    pointHitRadius: 10,
                     hidden: !activeDatasets.has(sensorId)
-                });
+                }, defaultDatasetStyle(color, { borderWidth: 3, pointRadius: 3, pointHoverRadius: 6, pointHitRadius: 10 })));
 
                 colorIndex++;
             });
@@ -513,37 +428,21 @@
                 dailyChart = new Chart(ctx, {
                     type: 'line',
                     data: { datasets: datasets },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                    options: defaultChartOptions({
                         scales: {
                             x: {
                                 type: 'time',
-                                time: {
-                                    unit: 'day',
-                                    tooltipFormat: 'dd.MM.yyyy',
-                                    displayFormats: { day: 'dd.MM' }
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Data',
-                                    font: { size: 14, weight: 600 }
-                                }
+                                time: { unit: 'day', tooltipFormat: 'dd.MM.yyyy', displayFormats: { day: 'dd.MM' } },
+                                title: { display: true, text: 'Data', font: { size: 14, weight: 600 } }
                             },
                             y: {
                                 suggestedMin: 30,
                                 suggestedMax: 80,
-                                title: {
-                                    display: true,
-                                    text: (metricLabels[metricType] || metricType) + ' (dB)',
-                                    font: { size: 14, weight: 600 }
-                                }
+                                title: { display: true, text: (metricLabels[metricType] || metricType) + ' (dB)', font: { size: 14, weight: 600 } }
                             }
                         },
                         plugins: {
                             legend: {
-                                display: true,
-                                position: 'top',
                                 onClick: function(e, legendItem) {
                                     const sensorId = dailyChart.data.datasets[legendItem.datasetIndex].sensorId;
                                     const checkbox = document.getElementById(`sensor-${sensorId}`);
@@ -556,18 +455,9 @@
                                     }
                                     updateChartVisibility();
                                 }
-                            },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false
                             }
-                        },
-                        interaction: {
-                            mode: 'nearest',
-                            axis: 'x',
-                            intersect: false
                         }
-                    }
+                    })
                 });
             }, 10);
         }
