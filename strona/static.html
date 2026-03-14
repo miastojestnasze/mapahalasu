@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Sensor configuration -->
     <script src="sensors.js"></script>
+    <!-- Shared chart utilities -->
+    <script src="charts-config.js"></script>
 
 </head>
 
@@ -52,16 +54,6 @@
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
-
-        // Function to determine circle color based on noise value
-        function getColor(noiseValue) {
-            return noiseValue > 65 ? '#ff0000' :
-                noiseValue > 60 ? '#ff2600' :
-                    noiseValue > 55 ? '#FF552B' :
-                        noiseValue > 50 ? '#DF8A09' :
-                            noiseValue > 45 ? '#BF9E00' :
-                                '#9F9F00';
-        }
 
         // Function to determine circle radius based on noise value
         function getRadius(noiseValue) {
@@ -133,11 +125,6 @@
         let dailyData = [];
         const popupCharts = {}; // Track Chart.js instances to prevent memory leaks
 
-        function formatWindow(seconds) {
-            if (seconds >= 60) return Math.round(seconds / 60) + ' min';
-            return seconds + ' s';
-        }
-
         // Function to create a combined chart with both Lmax and Leq lines
         function createCombinedNoiseChart(sensorId, canvasId) {
             // Destroy previous chart instance for this canvas
@@ -186,77 +173,26 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        {
-                            label: 'Lmax (dB)',
-                            data: lmaxLevels,
-                            backgroundColor: 'rgba(255, 107, 107, 0.2)',
-                            borderColor: '#ff6b6b',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.4,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            pointHoverBackgroundColor: '#ff6b6b',
-                            pointHitRadius: 8
-                        },
-                        {
-                            label: 'Leq (dB)',
-                            data: leqLevels,
-                            backgroundColor: 'rgba(161, 143, 250, 0.2)',
-                            borderColor: '#a18ffa',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.4,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            pointHoverBackgroundColor: '#a18ffa',
-                            pointHitRadius: 8
-                        }
+                        Object.assign({ label: 'Lmax (dB)', data: lmaxLevels }, defaultDatasetStyle('#ff6b6b')),
+                        Object.assign({ label: 'Leq (dB)', data: leqLevels }, defaultDatasetStyle('#a18ffa'))
                     ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                options: defaultChartOptions({
                     scales: {
                         y: {
                             beginAtZero: false,
                             min: Math.max(0, Math.min(...lmaxLevels.concat(leqLevels)) - 5),
-                            title: {
-                                display: true,
-                                text: 'dB'
-                            }
+                            title: { display: true, text: 'dB' }
                         },
                         x: {
-                            title: {
-                                display: true,
-                                text: 'Godzina'
-                            },
-                            ticks: {
-                                maxRotation: 0,
-                                autoSkip: true,
-                                maxTicksLimit: 8
-                            }
+                            title: { display: true, text: 'Godzina' },
+                            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
                         }
                     },
                     plugins: {
-                        title: {
-                            display: false
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        },
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
-                    },
-                    interaction: {
-                        mode: 'nearest',
-                        axis: 'x',
-                        intersect: false
+                        title: { display: false }
                     }
-                }
+                })
             });
         }
 
